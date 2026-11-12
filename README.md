@@ -54,6 +54,16 @@ Mở địa chỉ website bằng trình duyệt Android. Có thể chọn **Thê
 
 Các mục trên là yêu cầu sản phẩm/định hướng triển khai; chúng chưa được kết nối với máy chủ Minecraft thật trong bản giao diện tĩnh.
 
+### Nhóm chức năng mở rộng đã đưa vào lộ trình
+- Bảo vệ thế giới: sao lưu theo lịch, nhiều điểm khôi phục, kiểm tra tính toàn vẹn và phục hồi an toàn.
+- Tự động vận hành: lịch bật/tắt/bảo trì, tự khởi động lại có giới hạn, thông báo Offline và hàng đợi khi hết tài nguyên.
+- Mời bạn bè: mã mời có hạn dùng, QR an toàn, danh sách bạn bè, whitelist và quyền tham gia.
+- Kho nội dung: thư viện Modpack/bản đồ/Plugin/mẫu server và kiểm tra dependency, loader, phiên bản, xung đột trước khi cài.
+- Tài nguyên: giới hạn RAM/CPU/dung lượng/người chơi, giám sát trực tiếp và chặn tạo/chạy khi vượt ngưỡng.
+- Cộng đồng: đánh giá, bình chọn, yêu thích, bảng xếp hạng Việt Nam và quy trình báo cáo server vi phạm.
+
+Các nhóm này được ghi chi tiết trong [lộ trình tiếng Việt](./ROADMAP_VI.md), kèm tiêu chí nghiệm thu. Chúng là yêu cầu cần triển khai, không phải tính năng backend đã hoạt động.
+
 
 ## Tài liệu kế hoạch đầy đủ
 
