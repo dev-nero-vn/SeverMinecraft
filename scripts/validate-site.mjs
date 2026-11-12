@@ -196,9 +196,7 @@ const mockCatalog = {
 };
 const versionHarness = createHarness(null, false, async () => ({ ok: true, json: async () => mockCatalog }));
 versionHarness.click({ view: 'versions' });
-await Promise.resolve();
-await Promise.resolve();
-await Promise.resolve();
+await new Promise(resolve => setTimeout(resolve, 20));
 assert.ok(versionHarness.elements.get('page-content').innerHTML.includes('26.3'), 'Trang phiên bản không hiển thị Java latest');
 assert.ok(versionHarness.elements.get('page-content').innerHTML.includes('1.26.63.1'), 'Trang phiên bản không hiển thị Bedrock latest');
 
