@@ -151,11 +151,29 @@ async function buildCatalog() {
 
 try {
   const catalog = await buildCatalog();
-  const json = JSON.stringify(catalog, null, 2) + '\n';
-  await fs.writeFile(OUTPUT, json, 'utf8');
-  console.log(`Đã đồng bộ Java ${catalog.editions.java.latestRelease} và Bedrock ${catalog.editions.bedrock.latestRelease.version}`);
-  console.log(`Đã ghi ${catalog.editions.java.versions.length} mục phiên bản Java vào minecraft-versions.json`);
+  let previous = null;
+  try {
+    previous = JSON.parse(await fs.readFile(OUTPUT, 'utf8'));
+  } catch {
+    // No previous catalog: the first successful sync must create it.
+  }
+
+  const comparable = (value) => {
+    const copy = { ...value };
+    delete copy.generatedAt;
+    return JSON.stringify(copy);
+  };
+
+  if (previous && comparable(previous) === comparable(catalog)) {
+    console.log(`Không có thay đổi phiên bản. Giữ nguyên danh mục ${catalog.editions.java.latestRelease} / ${catalog.editions.bedrock.latestRelease.version}; không tạo commit mới.`);
+  } else {
+    const json = JSON.stringify(catalog, null, 2) + '\n';
+    await fs.writeFile(OUTPUT, json, 'utf8');
+    console.log(`Đã cập nhật danh mục: Java ${catalog.editions.java.latestRelease}, Bedrock ${catalog.editions.bedrock.latestRelease.version}`);
+    console.log(`Đã ghi ${catalog.editions.java.versions.length} mục phiên bản Java vào minecraft-versions.json`);
+  }
 } catch (error) {
   console.error(`Không cập nhật danh mục; giữ nguyên dữ liệu cũ: ${error.message}`);
   process.exitCode = 1;
+}
 }
