@@ -176,4 +176,3 @@ try {
   console.error(`Không cập nhật danh mục; giữ nguyên dữ liệu cũ: ${error.message}`);
   process.exitCode = 1;
 }
-}
