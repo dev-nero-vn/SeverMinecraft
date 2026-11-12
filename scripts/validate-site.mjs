@@ -5,18 +5,27 @@ import vm from 'node:vm';
 const read = (file) => fs.readFileSync(file, 'utf8');
 const exists = (file) => assert.ok(fs.existsSync(file), `Thiếu tệp bắt buộc: ${file}`);
 
-for (const file of ['index.html','styles.css','mc-theme.css','app.js','manifest.webmanifest','icon.svg','server-icon.png']) exists(file);
+for (const file of ['index.html','styles.css','mc-theme.css','app.js','manifest.webmanifest','icon.svg','server-icon.png','minecraft-versions.json','scripts/sync-minecraft-versions.mjs']) exists(file);
 
 const html = read('index.html');
 const css = read('styles.css');
 const theme = read('mc-theme.css');
 const app = read('app.js');
 const manifest = JSON.parse(read('manifest.webmanifest'));
+const versionCatalog = JSON.parse(read('minecraft-versions.json'));
+const versionSyncScript = read('scripts/sync-minecraft-versions.mjs');
 
 assert.match(html, /<html lang="vi">/, 'Trang phải khai báo tiếng Việt');
 assert.match(html, /name="viewport"/, 'Thiếu viewport cho thiết bị di động');
 assert.match(html, /src="\.\/app\.js"[^>]*defer/, 'app.js phải được tải defer');
 assert.match(html, /href="\.\/mc-theme\.css"/, 'Chưa nạp chủ đề Minecraft');
+assert.ok(!html.includes(String.fromCharCode(92) + 'n  <link'), 'HTML còn ký tự xuống dòng bị ghi sai trong head');
+assert.match(html, /data-view="versions"/, 'Thiếu trang phiên bản Minecraft');
+assert.equal(versionCatalog.schemaVersion, 1, 'Sai schema danh mục phiên bản');
+assert.equal(versionCatalog.sources.javaManifest, 'https://piston-meta.mojang.com/mc/game/version_manifest_v2.json', 'Sai nguồn Java chính thức');
+assert.match(versionSyncScript, /piston-meta\.mojang\.com\/mc\/game\/version_manifest_v2\.json/, 'Bộ đồng bộ thiếu nguồn Java');
+assert.match(versionSyncScript, /net-secondary\.web\.minecraft-services\.net\/api\/v1\.0\/download\/links/, 'Bộ đồng bộ thiếu nguồn Bedrock');
+assert.match(versionSyncScript, /process\.exitCode = 1/, 'Lỗi nguồn phải làm workflow thất bại, không ghi đè dữ liệu cũ');
 assert.equal(manifest.lang, 'vi', 'Manifest phải đặt ngôn ngữ tiếng Việt');
 assert.equal(manifest.display, 'standalone', 'Manifest phải hỗ trợ hiển thị dạng ứng dụng');
 assert.ok(Array.isArray(manifest.icons) && manifest.icons.length > 0, 'Manifest thiếu biểu tượng');
@@ -65,7 +74,7 @@ assert.match(css, /@media\(max-width:560px\)/, 'Thiếu bố cục cho điện t
 assert.match(theme, /prefers-reduced-motion/, 'Thiếu hỗ trợ giảm chuyển động');
 assert.match(theme, /@keyframes mc-page-in/, 'Thiếu hoạt ảnh chuyển trang');
 
-function createHarness(seedValue = null, blockWrites = false) {
+function createHarness(seedValue = null, blockWrites = false, fetchImpl = undefined) {
   const handlers = {};
   const elements = new Map();
   const store = new Map();
@@ -98,7 +107,7 @@ function createHarness(seedValue = null, blockWrites = false) {
     get(key) { return this.values[key] ?? null; }
   }
   vm.runInNewContext(app, {
-    document, localStorage, FormData: FakeFormData,
+    document, localStorage, FormData: FakeFormData, fetch: fetchImpl,
     setTimeout(){ return 1; }, clearTimeout(){},
     Date, JSON, Math, Number, String, Array, Object, Set
   }, { timeout: 1500 });
@@ -178,4 +187,19 @@ blocked.click({ go: 'create' });
 blocked.submit('private');
 assert.match(blocked.elements.get('toast').textContent, /Không thể lưu lâu dài/, 'Không cảnh báo khi trình duyệt chặn lưu trữ');
 
-console.log('KIỂM TRA THÀNH CÔNG: tài nguyên, manifest, điều hướng, biểu mẫu, giới hạn 20, lưu trữ, xóa bản nháp và escape HTML.');
+const mockCatalog = {
+  schemaVersion: 1, generatedAt: '2026-11-12T08:00:00.000Z', syncStatus: 'synced',
+  editions: {
+    java: { latestRelease: '26.3', latestSnapshot: '26.4-snapshot-7', serverDownload: { url: 'https://piston-data.mojang.com/server.jar' }, versions: [{ id: '26.3', type: 'release', releaseTime: '2026-09-15T11:23:02Z' }, { id: '26.4-snapshot-7', type: 'snapshot', releaseTime: '2026-11-03T13:08:56Z' }] },
+    bedrock: { latestRelease: { version: '1.26.63.1', windowsUrl: 'https://www.minecraft.net/bedrockdedicatedserver/bin-win/bedrock-server-1.26.63.1.zip', linuxUrl: 'https://www.minecraft.net/bedrockdedicatedserver/bin-linux/bedrock-server-1.26.63.1.zip' }, latestPreview: null }
+  }
+};
+const versionHarness = createHarness(null, false, async () => ({ ok: true, json: async () => mockCatalog }));
+versionHarness.click({ view: 'versions' });
+await Promise.resolve();
+await Promise.resolve();
+await Promise.resolve();
+assert.ok(versionHarness.elements.get('page-content').innerHTML.includes('26.3'), 'Trang phiên bản không hiển thị Java latest');
+assert.ok(versionHarness.elements.get('page-content').innerHTML.includes('1.26.63.1'), 'Trang phiên bản không hiển thị Bedrock latest');
+
+console.log('KIỂM TRA THÀNH CÔNG: tài nguyên, manifest, điều hướng, biểu mẫu, giới hạn 20, lưu trữ, escape HTML và danh mục phiên bản Java/Bedrock.');
