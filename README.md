@@ -7,7 +7,7 @@ Giao diện quản lý máy chủ Minecraft bằng tiếng Việt, tối ưu cho
 Đây là **bản thử nghiệm giao diện tĩnh**:
 - Thanh điều hướng bên trái với nhiều nhóm chức năng.
 - Giao diện thích ứng cho điện thoại, máy tính bảng và máy tính.
-- Có thể lưu bản nháp cấu hình máy chủ trong bộ nhớ trình duyệt.
+- Có thể lưu bản nháp cấu hình máy chủ trong bộ nhớ trình duyệt.\n- Biểu mẫu máy chủ riêng có trường đặt số người chơi tối đa mong muốn; con số này chỉ là cấu hình nháp, chưa phải giới hạn đang áp dụng trên máy chủ thật.
 - Có thể chọn tệp Modpack trên thiết bị để xem tên và dung lượng.
 
 Các chức năng sau **chưa hoạt động với máy chủ Minecraft thật** vì backend và bộ kết nối Vivo chưa được cài đặt:
