@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": null,
+  "syncStatus": "awaiting-first-sync",
+  "sources": {
+    "javaManifest": "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json",
+    "bedrockOfficialDownloadLinks": "https://net-secondary.web.minecraft-services.net/api/v1.0/download/links",
+    "bedrockOfficialDownloadPage": "https://www.minecraft.net/en-us/download/server/bedrock"
+  },
+  "editions": {
+    "java": {
+      "latestRelease": null,
+      "latestSnapshot": null,
+      "serverDownload": null,
+      "versions": []
+    },
+    "bedrock": {
+      "latestRelease": null,
+      "latestPreview": null
+    }
+  },
+  "compatibilityNotes": [
+    "Danh mục phiên bản chính thức không tự chứng minh phần mềm máy chủ, Mod hoặc Plugin đã tương thích.",
+    "Không tự nâng cấp thế giới đang chạy; phải sao lưu và kiểm tra tương thích trước khi áp dụng."
+  ]
+}
