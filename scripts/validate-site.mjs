@@ -46,7 +46,7 @@ assert.equal(png.readUInt32BE(20), 64, 'server-icon.png phải cao 64 px');
 const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]);
 assert.equal(ids.length, new Set(ids).size, 'HTML có id bị trùng');
 const staticIds = new Set(ids);
-const dynamicIds = new Set(['selected-file']);
+const dynamicIds = new Set(['selected-file','server-version','version-sync-status']);
 for (const id of [...app.matchAll(/getElementById\(['"]([^'"]+)['"]\)/g)].map(m => m[1])) {
   assert.ok(staticIds.has(id) || dynamicIds.has(id), `JavaScript tham chiếu id không tồn tại: ${id}`);
 }
