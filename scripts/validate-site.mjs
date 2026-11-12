@@ -45,7 +45,7 @@ for (const id of [...app.matchAll(/getElementById\(['"]([^'"]+)['"]\)/g)].map(m 
 const titleMatch = app.match(/const titles=(\{[\s\S]*?\});\nconst descriptions=/);
 assert.ok(titleMatch, 'Không tìm thấy danh sách tiêu đề trang');
 const titles = vm.runInNewContext('(' + titleMatch[1] + ')');
-const navViews = [...html.matchAll(/data-view="([^"]+)"/g)].map(m => m[1]);
+const navViews = [...html.matchAll(/<button class="nav-link[^"]*" data-view="([^"]+)"/g)].map(m => m[1]);
 assert.equal(navViews.length, new Set(navViews).size, 'Có mục điều hướng bị lặp');
 for (const view of navViews) assert.ok(Object.hasOwn(titles, view), `Mục điều hướng chưa có tiêu đề: ${view}`);
 for (const view of Object.keys(titles)) assert.ok(navViews.includes(view), `Trang chưa có mục menu: ${view}`);
