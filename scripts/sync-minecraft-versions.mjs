@@ -23,8 +23,7 @@ async function fetchJson(url, label) {
 }
 
 function assertVersion(value, label) {
-  if (typeof value !== 'string' || !/^[0-9]+(?:\.[0-9]+){1,3}(?:[-.][A-Za-z0-9.-]+)?$/.test(value)) {
-    throw new Error(`${label}: mã phiên bản không hợp lệ`);
+  if (typeof value !== 'string' || !/^[A-Za-z0-9]+(?:[._-][A-Za-z0-9]+)*$/.test(value)) {
   }
   return value;
 }
