@@ -234,3 +234,29 @@ Xây dựng nền tảng Minecraft bằng tiếng Việt, dùng trên điện th
 11. Bảng xếp hạng không cộng điểm lặp vô hạn; báo cáo vi phạm có trạng thái xử lý và nhật ký.
 12. Mọi chỉ số Online, CPU, RAM, người chơi và nhiệt độ đều phải đến từ nguồn thực, có thời điểm cập nhật.
 
+
+
+## 21. Đồng bộ phiên bản Minecraft mới
+
+- Có trang **Phiên bản Minecraft** riêng, hiển thị Java Release, Java Snapshot, Bedrock Dedicated Server Release và Preview.
+- Workflow `.github/workflows/minecraft-version-sync.yml` kiểm tra nguồn phiên bản mỗi 5 phút và hỗ trợ chạy thủ công.
+- Java lấy danh mục từ version manifest chính thức của Mojang: `https://piston-meta.mojang.com/mc/game/version_manifest_v2.json`.
+- Bedrock lấy các đường dẫn tải từ dịch vụ liên kết tải xuống mà trang Minecraft chính thức sử dụng: `https://net-secondary.web.minecraft-services.net/api/v1.0/download/links`; trang tải chính thức: `https://www.minecraft.net/en-us/download/server/bedrock`.
+- Khi phát hiện thay đổi, workflow cập nhật `minecraft-versions.json`, commit dữ liệu mới và yêu cầu xuất bản lại GitHub Pages.
+- Danh mục phân biệt Release và Snapshot/Preview; bản thử nghiệm không được đánh dấu là bản ổn định.
+- Selector tạo máy chủ đọc từ danh mục đã đồng bộ, không giữ danh sách phiên bản cũ viết cứng trong JavaScript.
+- Kiểm tra đúng loại Edition: Java phải dùng phần mềm máy chủ Java; Bedrock phải dùng Bedrock Dedicated Server.
+- Phiên bản Minecraft mới không tự động có nghĩa Paper/Purpur/Spigot/Forge/Fabric/NeoForge/Quilt hoặc Mod/Plugin đã tương thích. Cần xác minh riêng trước khi cho phép nâng cấp.
+- Không tự thay thế server đang chạy hoặc tự mở thế giới bằng bản mới. Trình cập nhật tương lai phải dừng server an toàn, sao lưu đủ dữ liệu, kiểm tra tương thích, nâng cấp ở thư mục mới và xác minh kết quả trước khi chuyển sang bản mới.
+- Lịch kiểm tra 5 phút là mục tiêu gần thời gian thực, không bảo đảm cập nhật tức thì tuyệt đối; GitHub Actions hoặc nguồn upstream có thể chậm/gián đoạn. Khi nguồn lỗi, giữ nguyên danh mục gần nhất và báo workflow thất bại.
+- Bedrock Dedicated Server chính thức có gói Windows/Linux; tài liệu hỗ trợ Minecraft nêu không có gói ARM chính thức. Không được coi gói Linux x86-64 chạy trực tiếp trên Vivo Android ARM.
+
+### Tiêu chí nghiệm thu đồng bộ phiên bản
+
+1. Workflow lấy được manifest Java và dữ liệu tải Bedrock từ nguồn được chỉ định.
+2. ID snapshot/legacy có ký tự đặc biệt được giữ nguyên như dữ liệu nguồn, không bị làm mất hoặc đổi mã.
+3. URL tải phải là HTTPS và thuộc host chính thức được cho phép; Java server metadata phải có SHA-1 hợp lệ.
+4. Danh mục chỉ được ghi khi cả dữ liệu bắt buộc đều hợp lệ; nếu nguồn lỗi thì không ghi đè danh mục cũ.
+5. Khi Java/Bedrock có phiên bản mới, file JSON được cập nhật và trang GitHub Pages được triển khai lại khi Pages đã bật.
+6. Biểu mẫu không cho ghép nhầm phiên bản Java với Bedrock Dedicated Server hoặc ngược lại.
+7. Không tự nâng cấp thế giới đang chạy; mọi nâng cấp phải có sao lưu và bước xác nhận riêng.
