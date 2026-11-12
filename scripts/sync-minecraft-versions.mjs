@@ -23,10 +23,11 @@ async function fetchJson(url, label) {
 }
 
 function assertVersion(value, label) {
-  // Accept legacy IDs such as rd-132211 and modern IDs such as 26.4-snapshot-7.
-  // Separators are allowed, but slashes, whitespace, and URL characters are rejected.
-  if (typeof value !== 'string' || !/^[A-Za-z0-9]+(?:[._-][A-Za-z0-9]+)*$/.test(value)) {
-    throw new Error(`${label}: mã phiên bản không hợp lệ`);
+  // Include the Unicode infinity symbol used by the special 20w14∞ Java snapshot.
+  // Block whitespace, slashes and control characters so IDs remain safe as labels.
+  if (typeof value !== 'string' || value.length > 80 ||
+      !/^[\p{L}\p{N}∞][\p{L}\p{N}∞._-]*$/u.test(value)) {
+    throw new Error(`${label}: mã phiên bản không hợp lệ (${String(value)})`);
   }
   return value;
 }
