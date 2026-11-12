@@ -73,6 +73,10 @@ assert.match(css, /@media\(max-width:820px\)/, 'Thiếu bố cục cho màn hìn
 assert.match(css, /@media\(max-width:560px\)/, 'Thiếu bố cục cho điện thoại');
 assert.match(theme, /prefers-reduced-motion/, 'Thiếu hỗ trợ giảm chuyển động');
 assert.match(theme, /@keyframes mc-page-in/, 'Thiếu hoạt ảnh chuyển trang');
+for (const cls of ['.mc-version-hero','.mc-pixel-ground','.mc-edition-card','.mc-version-row','.mc-update-safety']) {
+  assert.ok(theme.includes(cls), `Thiếu thành phần chủ đề Minecraft: ${cls}`);
+  assert.ok(app.includes(cls.replace(/^\\./,'')), `Trang phiên bản chưa sử dụng thành phần: ${cls}`);
+}
 
 function createHarness(seedValue = null, blockWrites = false, fetchImpl = undefined) {
   const handlers = {};
