@@ -23,11 +23,13 @@ async function fetchJson(url, label) {
 }
 
 function assertVersion(value, label) {
+  // Accept legacy IDs such as rd-132211 and modern IDs such as 26.4-snapshot-7.
+  // Separators are allowed, but slashes, whitespace, and URL characters are rejected.
   if (typeof value !== 'string' || !/^[A-Za-z0-9]+(?:[._-][A-Za-z0-9]+)*$/.test(value)) {
+    throw new Error(`${label}: mã phiên bản không hợp lệ`);
   }
   return value;
 }
-
 function officialUrl(value, hosts, label) {
   let url;
   try { url = new URL(value); } catch { throw new Error(`${label}: URL không hợp lệ`); }
