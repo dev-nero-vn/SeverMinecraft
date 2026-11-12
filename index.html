@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1220">
+  <meta name="description" content="Minecraft Platform — bản thử nghiệm giao diện quản lý máy chủ bằng tiếng Việt.">
+  <title>Minecraft Platform — Bảng điều khiển</title>
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="Điều hướng chính">
+      <div class="brand">
+        <div class="brand-mark">✦</div>
+        <div class="brand-copy"><strong>MINECRAFT</strong><span>PLATFORM</span></div>
+        <button class="icon-button sidebar-close" id="close-sidebar" aria-label="Đóng danh mục">×</button>
+      </div>
+      <div class="workspace"><div class="workspace-avatar">N</div><div class="workspace-copy"><strong>Không gian của tôi</strong><span>Bản thử nghiệm</span></div><span class="chevron">⌄</span></div>
+      <nav class="navigation" id="navigation">
+        <div class="nav-section-label">TỔNG QUAN</div>
+        <button class="nav-link active" data-view="dashboard"><span class="nav-icon">▦</span><span>Bảng điều khiển</span></button>
+        <button class="nav-link" data-view="statistics"><span class="nav-icon">◫</span><span>Thống kê hệ thống</span></button>
+        <button class="nav-link" data-view="notifications"><span class="nav-icon">♢</span><span>Thông báo</span></button>
+        <div class="nav-section-label">MÁY CHỦ MINECRAFT</div>
+        <button class="nav-link" data-view="community"><span class="nav-icon">♧</span><span>Máy chủ cộng đồng</span></button>
+        <button class="nav-link" data-view="private"><span class="nav-icon">▣</span><span>Máy chủ riêng</span></button>
+        <button class="nav-link" data-view="servers"><span class="nav-icon">▤</span><span>Tất cả máy chủ</span></button>
+        <button class="nav-link" data-view="create"><span class="nav-icon">＋</span><span>Tạo máy chủ mới</span></button>
+        <button class="nav-link" data-view="directory"><span class="nav-icon">◎</span><span>Danh bạ Việt Nam</span></button>
+        <div class="nav-section-label">NỘI DUNG VÀ TÙY CHỈNH</div>
+        <button class="nav-link" data-view="modpacks"><span class="nav-icon">▧</span><span>Thư viện Modpack</span></button>
+        <button class="nav-link" data-view="mods"><span class="nav-icon">◇</span><span>Quản lý Mod</span></button>
+        <button class="nav-link" data-view="plugins"><span class="nav-icon">⌘</span><span>Quản lý Plugin</span></button>
+        <button class="nav-link" data-view="files"><span class="nav-icon">▱</span><span>Quản lý tệp</span></button>
+        <button class="nav-link" data-view="worlds"><span class="nav-icon">▦</span><span>Thế giới và bản đồ</span></button>
+        <button class="nav-link" data-view="backups"><span class="nav-icon">⤓</span><span>Sao lưu và khôi phục</span></button>
+        <div class="nav-section-label">NGƯỜI CHƠI VÀ PHÂN QUYỀN</div>
+        <button class="nav-link" data-view="players"><span class="nav-icon">♙</span><span>Danh sách người chơi</span></button>
+        <button class="nav-link" data-view="bans"><span class="nav-icon">⊘</span><span>Cấm và gỡ cấm</span></button>
+        <button class="nav-link" data-view="roles"><span class="nav-icon">♜</span><span>Cấp quyền quản trị</span></button>
+        <div class="nav-section-label">VẬN HÀNH VÀ BẢO MẬT</div>
+        <button class="nav-link" data-view="console"><span class="nav-icon">⌁</span><span>Bảng lệnh máy chủ</span></button>
+        <button class="nav-link" data-view="monitor"><span class="nav-icon">⌁</span><span>Theo dõi CPU và RAM</span></button>
+        <button class="nav-link" data-view="logs"><span class="nav-icon">≡</span><span>Nhật ký hoạt động</span></button>
+        <button class="nav-link" data-view="security"><span class="nav-icon">♢</span><span>Bảo mật hệ thống</span></button>
+        <button class="nav-link" data-view="settings"><span class="nav-icon">⚙</span><span>Cài đặt nền tảng</span></button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="host-mini">
+          <div class="host-mini-top"><span class="status-dot offline"></span><strong>Máy chủ Vivo 1718</strong></div>
+          <span>Chưa kết nối · Android 8.1</span>
+          <div class="host-progress"><i></i></div>
+          <span class="host-caption" id="slot-count">0 / 20 vị trí đã tạo</span>
+        </div>
+        <div class="profile-row"><div class="profile-avatar">N</div><div class="profile-copy"><strong>Quản trị viên</strong><span>Chế độ xem thử</span></div><span class="profile-more">•••</span></div>
+      </div>
+    </aside>
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+    <section class="main-column">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="icon-button menu-button" id="open-sidebar" aria-label="Mở danh mục">☰</button>
+          <div class="breadcrumb"><span>Nền tảng</span><b>/</b><strong id="breadcrumb-current">Bảng điều khiển</strong></div>
+        </div>
+        <div class="topbar-actions">
+          <div class="connection-pill"><span class="status-dot offline"></span><span>Máy chủ chưa kết nối</span></div>
+          <button class="icon-button top-icon" data-view="notifications" aria-label="Thông báo">♢</button>
+          <div class="top-avatar" title="Quản trị viên">N</div>
+        </div>
+      </header>
+      <main class="page-content" id="page-content" tabindex="-1"><div class="loading-state">Đang mở bảng điều khiển…</div></main>
+      <footer class="page-footer"><span>Minecraft Platform · Bản thử nghiệm</span><span>Giao diện tiếng Việt · Chưa kết nối máy chủ thật</span></footer>
+    </section>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="modal-layer" id="modal-layer" aria-hidden="true"></div>
+  <script src="./app.js" defer></script>
+</body>
+</html>
