@@ -138,3 +138,99 @@ Xây dựng nền tảng Minecraft bằng tiếng Việt, dùng trên điện th
 - Đã có: giao diện tĩnh tiếng Việt, thanh điều hướng, biểu mẫu lưu bản nháp, giới hạn 20 bản nháp trên trình duyệt, trường số người chơi tối đa cho máy chủ riêng và logo giao diện.
 - Chưa có: backend trên Vivo, tài khoản thật, cơ sở dữ liệu dùng chung, khởi chạy Minecraft, cấp IP/cổng, kết nối Java–Bedrock, Modpack thật, ban/kick thật và giám sát thiết bị.
 - Mọi trạng thái phải được ghi đúng; bản nháp không được gọi là máy chủ đang chạy.
+
+
+## 14. Bảo vệ thế giới nâng cao
+
+### 14.1. Sao lưu theo lịch và nhiều phiên bản
+- Cho phép đặt lịch sao lưu theo giờ, ngày hoặc tuần; mỗi máy chủ có lịch riêng.
+- Có nút sao lưu thủ công trước khi cài Modpack, Mod, Plugin, đổi phiên bản hoặc cập nhật phần mềm.
+- Lưu nhiều điểm khôi phục, hiển thị thời gian, dung lượng, loại sao lưu và trạng thái kiểm tra.
+- Cho phép đặt số bản cần giữ hoặc giới hạn dung lượng; khi dọn bản cũ phải giữ lại bản mới nhất và các bản được ghim.
+- Có thể sao lưu thế giới, cấu hình, danh sách người chơi, whitelist, quyền, Plugin/Mod và tệp máy chủ theo lựa chọn.
+- Hỗ trợ bản sao ở vị trí lưu trữ thứ hai khi hạ tầng cho phép; không coi bản sao trên cùng bộ nhớ là bản dự phòng độc lập.
+- Kiểm tra checksum và khả năng đọc của bản sao lưu; cảnh báo nếu bản sao bị hỏng hoặc thiếu tệp.
+- Trước khi khôi phục, tự tạo một bản sao lưu hiện trạng; hiển thị rõ máy chủ nào, thế giới nào và thời điểm nào sẽ bị thay thế.
+- Có chế độ khôi phục thử vào thư mục riêng để kiểm tra trước khi ghi đè thế giới đang dùng.
+
+### 14.2. Chống mất dữ liệu khi tắt đột ngột
+- Ưu tiên lệnh lưu thế giới và dừng máy chủ an toàn trước khi tắt tiến trình.
+- Theo dõi trạng thái lưu, ghi nhật ký thao tác và phát hiện lần tắt không bình thường.
+- Có cơ chế khởi động lại sau sự cố; kiểm tra thế giới và tệp dữ liệu trước khi cho người chơi vào lại.
+- Với tiến trình bị dừng đột ngột hoặc mất điện, thực hiện quy trình kiểm tra/khôi phục an toàn; không hứa bảo toàn tuyệt đối dữ liệu chưa kịp ghi.
+- Có cảnh báo dung lượng thấp để tránh thế giới hoặc nhật ký không thể ghi tiếp.
+
+## 15. Tự động vận hành và hàng đợi
+
+- Lên lịch bật, tắt, khởi động lại và bảo trì theo múi giờ Việt Nam (Asia/Ho_Chi_Minh).
+- Cho phép lịch lặp theo ngày trong tuần, ngày cụ thể hoặc chỉ chạy một lần.
+- Tự khởi động lại sau lỗi với số lần thử hữu hạn, khoảng chờ tăng dần và trạng thái lỗi rõ ràng; tạm ngừng tự khởi động khi lỗi lặp lại.
+- Thông báo khi máy chủ chuyển Online/Offline, khởi động thất bại, hết tài nguyên, bản sao lưu lỗi hoặc bắt đầu bảo trì.
+- Kênh thông báo dự kiến: thông báo trong nền tảng; email hoặc tích hợp khác chỉ bật khi người dùng tự kết nối.
+- Hàng đợi khởi chạy khi thiết bị hết tài nguyên: ghi vị trí, thời điểm gửi, trạng thái chờ và lý do; tự đánh giá lại tài nguyên theo chu kỳ.
+- Người dùng có thể hủy yêu cầu đang chờ; không tự xóa hoặc khởi chạy lặp một yêu cầu.
+- Ưu tiên có thể cấu hình theo chủ máy chủ/gói tài nguyên, nhưng phải công khai quy tắc để tránh bất công.
+- Có nút dừng lịch và chế độ bảo trì để ngăn các tác vụ tự động xung đột.
+
+## 16. Mời bạn bè và kiểm soát quyền tham gia
+
+- Tạo mã mời riêng theo từng máy chủ; chủ máy chủ chọn thời hạn, số lượt dùng và quyền mặc định.
+- Mã mời có thể thu hồi ngay; không dùng mã mời làm mật khẩu quản trị.
+- Tạo QR chỉ chứa thông tin kết nối cần thiết hoặc liên kết mời có thời hạn; không đưa token quản trị hay thông tin bí mật vào QR.
+- Có danh sách bạn bè, yêu cầu kết bạn, chấp nhận/từ chối và chặn người dùng.
+- Quản lý danh sách được phép tham gia (whitelist), danh sách bị chặn và lời mời đang chờ.
+- Chủ máy chủ có thể cấp quyền xem, tham gia, xây dựng hoặc quản trị riêng biệt.
+- Ghi nhật ký người tạo, người sử dụng, thời gian hết hạn và lần thu hồi mã mời.
+- Có giới hạn tốc độ tạo mã và thử mã; ẩn dữ liệu cá nhân không cần thiết.
+
+## 17. Kho nội dung Minecraft và kiểm tra tương thích
+
+- Thư viện Modpack, Mod, Plugin, bản đồ/thế giới và mẫu máy chủ dựng sẵn.
+- Tìm kiếm theo phiên bản Minecraft, Java/Bedrock, phần mềm máy chủ, Mod Loader, thể loại và mức tài nguyên dự kiến.
+- Mỗi mục có nguồn tải, tác giả/nhà phát hành, giấy phép, phiên bản hỗ trợ, ngày cập nhật và dấu kiểm tra tệp.
+- Trước khi cài, phân tích manifest, dependency, phiên bản Java, Mod Loader, thư viện cần thiết và phân loại client-only/server-side.
+- Cảnh báo Mod/Plugin trùng chức năng, xung đột phiên bản, tệp không rõ nguồn hoặc gói chỉ dành cho máy người chơi.
+- Cho phép xem trước danh sách thay đổi; sao lưu trước khi áp dụng; lưu lịch sử cài đặt và hỗ trợ hoàn tác.
+- Hỗ trợ nhập từ tệp trên điện thoại/máy tính và URL nguồn hợp lệ; xử lý quyền truy cập, giới hạn tải xuống và điều khoản nền tảng.
+- Mẫu dựng sẵn gồm Sinh tồn, SMP, Sáng tạo, SkyBlock và các chế độ phổ biến; mẫu chỉ là cấu hình khởi tạo, không tự bảo đảm máy có đủ tài nguyên.
+- Kiểm tra riêng khả năng chơi chung Java–Bedrock; không coi Mod Java bất kỳ là tương thích với Bedrock.
+
+## 18. Giới hạn và tối ưu tài nguyên
+
+- Chủ máy chủ có thể đặt ngân sách RAM, CPU (mức ưu tiên/giới hạn khi hệ điều hành hỗ trợ), dung lượng lưu trữ và số người chơi.
+- Hệ thống đặt trần an toàn cho từng máy chủ và tổng thiết bị; không cho nhập mức vượt ngân sách khả dụng.
+- Theo dõi sử dụng RAM/CPU/dung lượng, mạng, nhiệt độ thiết bị (nếu cảm biến cho phép), số người chơi và tiến trình theo thời gian thực.
+- Hiển thị biểu đồ lịch sử theo khoảng thời gian; phân biệt dữ liệu trực tiếp, dữ liệu cũ và dữ liệu chưa có.
+- Từ chối tạo hoặc khởi chạy server mới khi chạm ngưỡng an toàn; đưa yêu cầu vào hàng đợi khi có thể.
+- Cảnh báo trước khi dung lượng đầy; đề xuất dọn log/bản sao cũ theo chính sách, không tự xóa thế giới.
+- Có hạn mức theo từng tài khoản và từng máy chủ khi đã có backend; việc giới hạn phải xác thực ở backend, không chỉ bằng JavaScript.
+- Tách giới hạn số cấu hình khỏi số tiến trình chạy đồng thời. Mục tiêu 20 cấu hình không có nghĩa Vivo 4 GB RAM có thể chạy 20 server cùng lúc.
+- Đo tải thực tế trên Vivo 1718 trước khi chốt số người chơi hoặc số server đồng thời; dừng thử nghiệm khi nhiệt độ hoặc độ ổn định vượt ngưỡng an toàn.
+
+## 19. Cộng đồng, đánh giá và xếp hạng Việt Nam
+
+- Hồ sơ server có đánh giá bằng sao, nhận xét và bình chọn; ghi thời điểm cập nhật và trạng thái xác minh.
+- Người dùng có thể theo dõi/bỏ theo dõi server yêu thích và nhận cập nhật trạng thái nếu bật thông báo.
+- Bảng xếp hạng Việt Nam có bộ lọc theo Java/Bedrock, phiên bản, chế độ, tỉnh/thành và thời gian.
+- Công khai tiêu chí xếp hạng; tách lượt bình chọn, số người chơi kiểm tra được và đánh giá để không đánh đồng các số liệu.
+- Chỉ tài khoản hợp lệ mới được bình chọn; giới hạn tần suất và phát hiện hành vi spam, tài khoản ảo hoặc thao túng điểm.
+- Chủ server có thể phản hồi đánh giá nhưng không được tự xóa nhận xét của người chơi.
+- Nút báo cáo server vi phạm: gian lận danh bạ, giả mạo, nội dung không phù hợp, lừa đảo hoặc hành vi gây hại.
+- Hệ thống tiếp nhận, phân loại, lưu bằng chứng tối thiểu, trạng thái xử lý và lịch sử quyết định; có cơ chế kháng nghị.
+- Công khai nhãn đã xác minh, đang xem xét hoặc bị hạn chế; không tự kết luận vi phạm chỉ dựa trên một báo cáo chưa kiểm chứng.
+
+## 20. Các yêu cầu kỹ thuật và nghiệm thu bổ sung
+
+1. Lịch sao lưu chạy đúng giờ Việt Nam; lưu được nhiều bản và tự kiểm tra tính toàn vẹn.
+2. Khôi phục thử vào vị trí riêng thành công; khôi phục thật luôn tạo bản dự phòng trước khi ghi đè.
+3. Mô phỏng tiến trình dừng đột ngột và xác minh quy trình kiểm tra dữ liệu sau khi khởi động.
+4. Tự khởi động lại có giới hạn thử; không lặp vô hạn khi cấu hình sai.
+5. Lịch bật/tắt/bảo trì không chạy chồng nhau và có thể tạm dừng.
+6. Mã mời có thể hết hạn, giới hạn lượt và thu hồi; QR không chứa bí mật quản trị.
+7. Danh sách bạn bè, whitelist và quyền tham gia được backend xác thực.
+8. Bộ kiểm tra Modpack phát hiện thiếu dependency hoặc sai loader trong bộ mẫu thử.
+9. Giới hạn tài nguyên được áp dụng thật ở backend; không thể vượt chỉ bằng sửa dữ liệu trình duyệt.
+10. Khi thiết bị đầy tải, yêu cầu khởi chạy bị từ chối hoặc xếp hàng theo quy tắc công khai.
+11. Bảng xếp hạng không cộng điểm lặp vô hạn; báo cáo vi phạm có trạng thái xử lý và nhật ký.
+12. Mọi chỉ số Online, CPU, RAM, người chơi và nhiệt độ đều phải đến từ nguồn thực, có thời điểm cập nhật.
+
