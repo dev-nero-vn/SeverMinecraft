@@ -20,13 +20,24 @@ jobs:
     steps:
       - name: Lấy mã nguồn
         uses: actions/checkout@v4
+      - name: Cài Node.js để kiểm tra mã
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Kiểm tra cú pháp JavaScript
+        run: node --check app.js
+      - name: Chạy bộ kiểm thử website
+        run: node scripts/validate-site.mjs
       - name: Kiểm tra các tệp website
         run: |
           test -f index.html
           test -f styles.css
+          test -f mc-theme.css
           test -f app.js
           test -f manifest.webmanifest
-          echo "Đã tìm thấy các tệp website."
+          test -f icon.svg
+          test -f server-icon.png
+          echo "Đã kiểm tra các tệp website."
       - name: Chuẩn bị gói website
         uses: actions/upload-pages-artifact@v3
         with:
