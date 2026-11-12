@@ -68,3 +68,11 @@ Các nhóm này được ghi chi tiết trong [lộ trình tiếng Việt](./ROA
 ## Tài liệu kế hoạch đầy đủ
 
 Xem [Lộ trình chức năng bằng tiếng Việt](./ROADMAP_VI.md) để đọc toàn bộ phạm vi tính năng và tiêu chí nghiệm thu.
+
+
+### Đồng bộ phiên bản Minecraft
+- Tự kiểm tra manifest Java và liên kết tải Bedrock chính thức mỗi 5 phút bằng GitHub Actions.
+- Khi phát hiện phiên bản mới, tự cập nhật `minecraft-versions.json` và kích hoạt quy trình xuất bản lại GitHub Pages.
+- Trang Phiên bản Minecraft hiển thị Release/Snapshot/Preview; biểu mẫu tạo server nạp danh mục động.
+- Có kiểm tra Edition/loại phần mềm và ghi rõ trạng thái tương thích; không nâng cấp thế giới đang chạy một cách mù quáng.
+- Đây là đồng bộ danh mục gần thời gian thực, không cam kết tức thì tuyệt đối. GitHub Pages phải được bật để trang được xuất bản.
