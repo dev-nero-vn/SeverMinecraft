@@ -1,78 +1,32 @@
-# Minecraft Platform — Bản thử nghiệm
+# Nero Remote
 
-Giao diện quản lý máy chủ Minecraft bằng tiếng Việt, tối ưu cho điện thoại và máy tính.
+Ứng dụng Android đôi để xem và điều khiển một thiết bị Android khác mà chủ máy đã cấu hình tin cậy.
 
-## Trạng thái hiện tại
+## Thành phần
+- `controller`: APK điều khiển.
+- `host`: APK được cài trên điện thoại ở nhà.
+- `shared`: ghép nối, báo hiệu Supabase Realtime và WebRTC.
+- `website/`: trang tải hai APK.
+- `supabase/`: tài liệu cấu hình backend.
 
-Đây là **bản thử nghiệm giao diện tĩnh**:
-- Thanh điều hướng bên trái với nhiều nhóm chức năng.
-- Giao diện thích ứng cho điện thoại, máy tính bảng và máy tính.
-- Có thể lưu bản nháp cấu hình máy chủ trong bộ nhớ trình duyệt.
-- Biểu mẫu máy chủ riêng có trường đặt số người chơi tối đa mong muốn; con số này chỉ là cấu hình nháp, chưa phải giới hạn đang áp dụng trên máy chủ thật.
-- Có thể chọn tệp Modpack trên thiết bị để xem tên và dung lượng.
+## Kết nối
+- Internet: Supabase Realtime để báo hiệu, WebRTC cho video và lệnh.
+- WebRTC dùng STUN mặc định; TURN cần cấu hình để vượt các mạng NAT khó.
+- LAN và Wi-Fi Direct là các chế độ cần triển khai/kiểm thử riêng, chưa được đánh dấu hoàn thành trong bản nền này.
 
-Các chức năng sau **chưa hoạt động với máy chủ Minecraft thật** vì backend và bộ kết nối Vivo chưa được cài đặt:
-- Khởi động/tắt máy chủ Minecraft.
-- Cấm/gỡ cấm người chơi và cấp quyền trong game.
-- Cài Modpack, Mod, Plugin vào máy chủ.
-- Đọc CPU, RAM, nhiệt độ và người chơi trực tuyến.
-- Danh bạ server có dữ liệu trực tiếp.
+## Quyền Android
+Host cần quyền Trợ năng để thực hiện thao tác cảm ứng và quyền MediaProjection để chia sẻ màn hình. Host chạy foreground service có thông báo hiển thị. MediaProjection là quyền do Android kiểm soát; ứng dụng không thể ghi nhớ sự chấp thuận vĩnh viễn qua mọi phiên/khởi động lại. Sau 5 phút không có thao tác từ Controller, luồng video được tạm ngừng nhưng phiên capture được giữ mở khi Android cho phép; nút tiếp tục trong Controller có thể đánh thức luồng.
 
-## Xuất bản thử nghiệm
+## Bảo mật
+Mã ghép nối là bí mật truy cập; hãy dùng mã dài, không đăng công khai. Kênh Realtime công khai được đặt tên bằng SHA-256 của mã; video và dữ liệu WebRTC được bảo vệ bởi DTLS-SRTP. Thu hồi mã bằng cách đổi mã trên Host. Luôn có thông báo khi chia sẻ màn hình và nút dừng Host.
 
-Kho mã nguồn dùng GitHub Pages. Trong GitHub, mở **Settings → Pages** và chọn **Source: GitHub Actions**. Sau đó vào **Actions**, mở quy trình “Xuất bản website thử nghiệm” và kiểm tra lần chạy.
+## Build
+GitHub Actions cài JDK, Android SDK và Gradle rồi build:
+- `:controller:assembleDebug`
+- `:host:assembleDebug`
 
-Địa chỉ dự kiến sau khi bật Pages:
-https://dev-nero-vn.github.io/SeverMinecraft/
+APK debug dùng để kiểm thử, chưa phải bản phát hành ký bằng khóa riêng. Không đưa APK lên trang tải như bản ổn định trước khi kiểm thử trên hai máy thật.
 
-## Chạy thử trên điện thoại
-
-Mở địa chỉ website bằng trình duyệt Android. Có thể chọn **Thêm vào màn hình chính** để tạo lối tắt dạng ứng dụng. Đây là giao diện web; nó chưa chạy Minecraft Server trên điện thoại.
-
-## Kiến trúc mục tiêu
-
-- GitHub: lưu mã nguồn và lịch sử thay đổi.
-- GitHub Pages: xuất bản giao diện tĩnh.
-- Vivo 1718: máy chủ vật lý thử nghiệm, Android 8.1, RAM 4 GB, bộ nhớ 32 GB.
-- Backend trên Vivo: sẽ được thiết kế và cài ở giai đoạn tiếp theo, sau khi kiểm tra thiết bị và mạng.
-- Giới hạn mục tiêu giai đoạn đầu: tối đa 20 cấu hình máy chủ; số máy chủ chạy đồng thời phải được kiểm tra theo tài nguyên thực tế.
-
-**Chưa có mật khẩu máy chủ hoặc dữ liệu bí mật nào được nhúng trong website.**
-
-## Các yêu cầu chức năng bổ sung đã thống nhất
-
-- Máy chủ riêng cho phép chủ máy chủ nhập số người chơi tối đa mong muốn.
-- Máy chủ cộng đồng và máy chủ riêng có mã mời và mã QR để chia sẻ địa chỉ tham gia.
-- Danh sách cho phép, cấm/gỡ cấm, vai trò quản trị và nhật ký xử lý người chơi.
-- Sao lưu thế giới theo lịch và sao lưu thủ công; có thể khôi phục về bản trước.
-- Tự khởi động lại sau sự cố, có lịch bảo trì và lịch khởi động/tắt máy chủ.
-- Cảnh báo khi máy chủ ngoại tuyến, bộ nhớ gần đầy, RAM/CPU hoặc nhiệt độ vượt ngưỡng.
-- Xuất/nhập thế giới và cấu hình để chuyển sang thiết bị chủ khác.
-- Mẫu máy chủ dựng sẵn cho sinh tồn, sáng tạo và các chế độ phổ biến.
-- Trang trạng thái công khai cho từng máy chủ, hiển thị phiên bản, chế độ và số người chơi thực tế.
-- Bảo vệ chống phá hoại, phân quyền xây dựng và lưu lịch sử thao tác.
-
-Các mục trên là yêu cầu sản phẩm/định hướng triển khai; chúng chưa được kết nối với máy chủ Minecraft thật trong bản giao diện tĩnh.
-
-### Nhóm chức năng mở rộng đã đưa vào lộ trình
-- Bảo vệ thế giới: sao lưu theo lịch, nhiều điểm khôi phục, kiểm tra tính toàn vẹn và phục hồi an toàn.
-- Tự động vận hành: lịch bật/tắt/bảo trì, tự khởi động lại có giới hạn, thông báo Offline và hàng đợi khi hết tài nguyên.
-- Mời bạn bè: mã mời có hạn dùng, QR an toàn, danh sách bạn bè, whitelist và quyền tham gia.
-- Kho nội dung: thư viện Modpack/bản đồ/Plugin/mẫu server và kiểm tra dependency, loader, phiên bản, xung đột trước khi cài.
-- Tài nguyên: giới hạn RAM/CPU/dung lượng/người chơi, giám sát trực tiếp và chặn tạo/chạy khi vượt ngưỡng.
-- Cộng đồng: đánh giá, bình chọn, yêu thích, bảng xếp hạng Việt Nam và quy trình báo cáo server vi phạm.
-
-Các nhóm này được ghi chi tiết trong [lộ trình tiếng Việt](./ROADMAP_VI.md), kèm tiêu chí nghiệm thu. Chúng là yêu cầu cần triển khai, không phải tính năng backend đã hoạt động.
-
-
-## Tài liệu kế hoạch đầy đủ
-
-Xem [Lộ trình chức năng bằng tiếng Việt](./ROADMAP_VI.md) để đọc toàn bộ phạm vi tính năng và tiêu chí nghiệm thu.
-
-
-### Đồng bộ phiên bản Minecraft
-- Tự kiểm tra manifest Java và liên kết tải Bedrock chính thức mỗi 5 phút bằng GitHub Actions.
-- Khi phát hiện phiên bản mới, tự cập nhật `minecraft-versions.json` và kích hoạt quy trình xuất bản lại GitHub Pages.
-- Trang Phiên bản Minecraft hiển thị Release/Snapshot/Preview; biểu mẫu tạo server nạp danh mục động.
-- Có kiểm tra Edition/loại phần mềm và ghi rõ trạng thái tương thích; không nâng cấp thế giới đang chạy một cách mù quáng.
-- Đây là đồng bộ danh mục gần thời gian thực, không cam kết tức thì tuyệt đối. GitHub Pages phải được bật để trang được xuất bản.
+## Backend
+Supabase project URL: `https://geacjfwatxmfzezkholp.supabase.co`
+Ứng dụng dùng publishable/anon key, không dùng service-role key trong APK.
