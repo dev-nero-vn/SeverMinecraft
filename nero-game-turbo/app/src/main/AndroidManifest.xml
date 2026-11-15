@@ -13,6 +13,8 @@
     <application
         android:allowBackup="false"
         android:label="Nero Game Turbo"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:theme="@style/AppTheme"
         android:supportsRtl="true">
 
