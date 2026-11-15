@@ -775,10 +775,7 @@ class HudOverlayService : Service() {
     private fun showShortcutPicker() {
         val apps = launcherApps()
         val current = (prefs.getStringSet(KEY_SHORTCUTS, emptySet()) ?: emptySet()).toMutableSet()
-        if (current.isEmpty()) {
-            apps.take(14).forEach { current.add(it.activityInfo.packageName) }
-        }
-        // Khi chưa từng lọc, mặc định chọn tất cả để người dùng thấy toàn bộ app.
+        // Không giới hạn 8/14 ứng dụng: danh sách ban đầu gồm mọi ứng dụng có thể mở.
         if (current.isEmpty()) apps.forEach { current.add(it.activityInfo.packageName) }
         val labels = apps.map { it.loadLabel(packageManager).toString() }.toTypedArray()
         val checked = BooleanArray(apps.size) { current.contains(apps[it].activityInfo.packageName) }
