@@ -354,55 +354,54 @@ class HudOverlayService : Service() {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
         }
         visibleApps.forEach { app ->
-            val tile = FrameLayout(this).apply {
-                background = ripple(0x00000000, 10)
-                isClickable = true
-                isFocusable = true
-                var downX = 0f
-                var downY = 0f
-                var holdReady = false
-                var dragged = false
-                val holdRunnable = Runnable {
-                    holdReady = true
-                    tile.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
-                    tile.animate().scaleX(0.92f).scaleY(0.92f).setDuration(100).start()
-                }
-                setOnTouchListener { _, event ->
-                    when (event.actionMasked) {
-                        MotionEvent.ACTION_DOWN -> {
-                            downX = event.rawX
-                            downY = event.rawY
-                            holdReady = false
-                            dragged = false
-                            handler.removeCallbacks(holdRunnable)
-                            handler.postDelayed(holdRunnable, 380L)
-                            true
-                        }
-                        MotionEvent.ACTION_MOVE -> {
-                            if (holdReady && !dragged &&
-                                (event.rawX - downX > dp(28) || kotlin.math.abs(event.rawY - downY) > dp(28))) {
-                                dragged = true
-                                handler.removeCallbacks(holdRunnable)
-                                launchApp(app.activityInfo.packageName, true)
-                            }
-                            true
-                        }
-                        MotionEvent.ACTION_UP -> {
-                            handler.removeCallbacks(holdRunnable)
-                            tile.animate().scaleX(1f).scaleY(1f).setDuration(100).start()
-                            if (!dragged) launchApp(app.activityInfo.packageName, false)
-                            true
-                        }
-                        MotionEvent.ACTION_CANCEL -> {
-                            handler.removeCallbacks(holdRunnable)
-                            tile.animate().scaleX(1f).scaleY(1f).setDuration(100).start()
-                            true
-                        }
-                        else -> true
-                    }
-                }
-                contentDescription = app.loadLabel(packageManager).toString() + ". Vuốt kéo sang phải để mở cửa sổ nổi."
+            val tile = FrameLayout(this)
+            tile.background = ripple(0x00000000, 10)
+            tile.isClickable = true
+            tile.isFocusable = true
+            var downX = 0f
+            var downY = 0f
+            var holdReady = false
+            var dragged = false
+            val holdRunnable = Runnable {
+                holdReady = true
+                tile.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                tile.animate().scaleX(0.92f).scaleY(0.92f).setDuration(100).start()
             }
+            tile.setOnTouchListener { view, event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        downX = event.rawX
+                        downY = event.rawY
+                        holdReady = false
+                        dragged = false
+                        handler.removeCallbacks(holdRunnable)
+                        handler.postDelayed(holdRunnable, 380L)
+                        true
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        if (holdReady && !dragged &&
+                            (event.rawX - downX > dp(28) || kotlin.math.abs(event.rawY - downY) > dp(28))) {
+                            dragged = true
+                            handler.removeCallbacks(holdRunnable)
+                            launchApp(app.activityInfo.packageName, true)
+                        }
+                        true
+                    }
+                    MotionEvent.ACTION_UP -> {
+                        handler.removeCallbacks(holdRunnable)
+                        view.animate().scaleX(1f).scaleY(1f).setDuration(100).start()
+                        if (!dragged) launchApp(app.activityInfo.packageName, false)
+                        true
+                    }
+                    MotionEvent.ACTION_CANCEL -> {
+                        handler.removeCallbacks(holdRunnable)
+                        view.animate().scaleX(1f).scaleY(1f).setDuration(100).start()
+                        true
+                    }
+                    else -> true
+                }
+            }
+            tile.contentDescription = app.loadLabel(packageManager).toString() + ". Giữ rồi kéo sang phải để mở cửa sổ nổi."
             val icon = ImageView(this).apply {
                 setImageDrawable(app.loadIcon(packageManager))
                 scaleType = ImageView.ScaleType.FIT_CENTER
