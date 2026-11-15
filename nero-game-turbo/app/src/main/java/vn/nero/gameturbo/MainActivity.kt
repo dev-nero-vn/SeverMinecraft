@@ -40,7 +40,6 @@ class MainActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var cpuValue: TextView
     private lateinit var ramValue: TextView
-    private lateinit var hzValue: TextView
     private lateinit var permissionHint: TextView
     private var permissionStep = 0
     private var lastStats: DeviceStats.Snapshot? = null
@@ -51,7 +50,6 @@ class MainActivity : Activity() {
                 val stats = DeviceStats.read(this@MainActivity)
                 cpuValue.text = stats.cpuText
                 ramValue.text = stats.ramText
-                hzValue.text = stats.refreshText
                 lastStats = stats
                 handler.postDelayed(this, 1500L)
             }
@@ -166,9 +164,8 @@ class MainActivity : Activity() {
         val fpsCard = statCard("FPS", "—", "Không có quyền đọc FPS hệ thống", 0xFFB85CFF)
         val ramCard = statCard("RAM", "—", "Bộ nhớ đã dùng", 0xFF4EBBFF)
         ramValue = ramCard.second
-        val hzCard = statCard("MÀN HÌNH", "—", "Tần số quét · Hz", 0xFF4EBBFF)
-        hzValue = hzCard.second
-        listOf(cpuCard.first, fpsCard.first, ramCard.first, hzCard.first).forEachIndexed { index, card ->
+        val gpuCard = statCard("GPU", "—", "Cần quyền hệ thống Samsung", 0xFF4EBBFF)
+        listOf(cpuCard.first, fpsCard.first, ramCard.first, gpuCard.first).forEachIndexed { index, card ->
             stats.addView(card, LinearLayout.LayoutParams(0, dp(78), 1f).apply {
                 if (index > 0) leftMargin = dp(8)
             })
