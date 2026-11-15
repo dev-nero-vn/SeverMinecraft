@@ -23,10 +23,12 @@ jobs:
         uses: actions/checkout@v4
       - name: Unpack independent HUD project
         run: unzip -q game-hud-project.zip -d .
-      - name: Set up Android SDK tools
-        uses: android-actions/setup-android@v3
+      - name: Check preinstalled Android SDK
+        run: |
+          test -n "$ANDROID_HOME"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --version || true
       - name: Install Android build tools
-        run: sdkmanager "build-tools;36.0.0" "platforms;android-37"
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "build-tools;36.0.0" "platforms;android-37"
       - name: Dump APK metadata and permissions
         shell: bash
         run: |
@@ -52,7 +54,6 @@ jobs:
           chmod +x /tmp/jadx/bin/jadx
           mkdir -p /tmp/samsung-jadx
           /tmp/jadx/bin/jadx --no-res --threads-count 2 -d /tmp/samsung-jadx 'Samsung+Game+Booster_8.0.02.35_APKPure.apk' > /tmp/jadx.log 2>&1 || true
-          echo "JADX_OUTPUT_FILES=$(find /tmp/samsung-jadx -type f -name '*.java' | wc -l)" >> "$GITHUB_ENV"
       - name: Write non-source analysis report
         if: always()
         shell: bash
@@ -60,7 +61,6 @@ jobs:
           mkdir -p analysis
           python3 game-hud/tools/summarize_reference.py analysis/reference/badging.txt analysis/reference/permissions.txt /tmp/samsung-jadx analysis/SAMSUNG_APK_ANALYSIS.md
           cat analysis/SAMSUNG_APK_ANALYSIS.md >> "$GITHUB_STEP_SUMMARY"
-          echo "JADX feature inventory completed when tooling was available." >> "$GITHUB_STEP_SUMMARY"
       - name: Upload metadata-only analysis report
         if: always()
         uses: actions/upload-artifact@v4
@@ -92,10 +92,8 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.3.1'
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
       - name: Install Android 17 platform and build tools
-        run: sdkmanager "platforms;android-37" "build-tools;36.0.0" "platform-tools"
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37" "build-tools;36.0.0" "platform-tools"
       - name: Build debug APK
         run: gradle --no-daemon -p game-hud assembleDebug
       - name: Verify APK package, SDK and signing
