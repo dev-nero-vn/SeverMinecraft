@@ -114,12 +114,35 @@ class MainActivity : Activity() {
                 isClickable = true
                 isFocusable = true
                 background = rippleBackground(0x00000000, 12)
-                setOnClickListener { launchApplication(app.packageName, false) }
-                setOnLongClickListener {
-                    launchApplication(app.packageName, true)
-                    true
+                var downX = 0f
+                var downY = 0f
+                var dragged = false
+                setOnTouchListener { _, event ->
+                    when (event.actionMasked) {
+                        android.view.MotionEvent.ACTION_DOWN -> {
+                            downX = event.rawX
+                            downY = event.rawY
+                            dragged = false
+                            true
+                        }
+                        android.view.MotionEvent.ACTION_MOVE -> {
+                            if (!dragged && event.rawX - downX > dp(24)) {
+                                dragged = true
+                                launchApplication(app.packageName, true)
+                            }
+                            true
+                        }
+                        android.view.MotionEvent.ACTION_UP -> {
+                            if (!dragged && kotlin.math.abs(event.rawX - downX) < dp(12) && kotlin.math.abs(event.rawY - downY) < dp(12)) {
+                                launchApplication(app.packageName, false)
+                            }
+                            true
+                        }
+                        android.view.MotionEvent.ACTION_CANCEL -> true
+                        else -> true
+                    }
                 }
-                contentDescription = app.label
+                contentDescription = "Mở ${app.label}; kéo sang phải để yêu cầu cửa sổ nổi"
             }
             val icon = ImageView(this).apply {
                 setImageDrawable(app.info.loadIcon(packageManager))
