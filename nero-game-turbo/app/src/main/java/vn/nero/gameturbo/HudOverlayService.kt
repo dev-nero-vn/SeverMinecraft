@@ -44,6 +44,7 @@ class HudOverlayService : Service() {
         const val KEY_HANDLE_LENGTH = "handle_length"
         const val KEY_HANDLE_WIDTH = "handle_width"
         const val KEY_HANDLE_ALPHA = "handle_alpha"
+        const val KEY_GAME_MODE = "game_mode"
         const val ACTION_START = "vn.nero.gameturbo.START"
         const val ACTION_REFRESH = "vn.nero.gameturbo.REFRESH"
         private const val CHANNEL_ID = "nero_game_turbo_hud"
@@ -58,7 +59,8 @@ class HudOverlayService : Service() {
     private var currentGamePackage: String? = null
     private var currentGameName = "Đang chờ trò chơi"
     private var panelOpen = false
-    private val panelMetricValues = mutableListOf<TextView>()
+    private val panelMetricViews = mutableListOf<CircularStatView>()
+    private val modeChipViews = linkedMapOf<String, TextView>()
     private var cpuText = "—"
     private var ramText = "—"
     private var hzText = "—"
@@ -71,7 +73,12 @@ class HudOverlayService : Service() {
             ramText = stats.ramText
             hzText = stats.refreshText
             if (panelOpen) refreshPanelStats()
-            handler.postDelayed(this, 1100L)
+            val delay = when (prefs.getString(KEY_GAME_MODE, "balanced")) {
+                "performance" -> 700L
+                "battery" -> 3000L
+                else -> 1400L
+            }
+            handler.postDelayed(this, delay)
         }
     }
 
@@ -305,7 +312,7 @@ class HudOverlayService : Service() {
         rail.addView(gameIcon, LinearLayout.LayoutParams(dp(38), dp(38)).apply { bottomMargin = dp(7) })
         val allLauncherApps = launcherApps()
         val savedShortcuts = prefs.getStringSet(KEY_SHORTCUTS, emptySet()) ?: emptySet()
-        // Mặc định hiển thị toàn bộ ứng dụng đã cài; người dùng có thể lọc bằng nút dấu cộng.
+        // Trống nghĩa là hiện mọi ứng dụng. Khi người dùng chọn ở nút +, chỉ các ứng dụng đã chọn được ghim.
         val visibleApps = if (savedShortcuts.isEmpty()) allLauncherApps
             else allLauncherApps.filter { savedShortcuts.contains(it.activityInfo.packageName) }
 
@@ -410,19 +417,41 @@ class HudOverlayService : Service() {
         header.addView(close, LinearLayout.LayoutParams(dp(32), dp(32)))
         rightContent.addView(header, LinearLayout.LayoutParams(-1, dp(38)))
 
-        panelMetricValues.clear()
-        val statRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        statRow.addView(statTile("CPU", cpuText), LinearLayout.LayoutParams(0, dp(58), 1f))
-        statRow.addView(statTile("FPS", "—"), LinearLayout.LayoutParams(0, dp(58), 1f).apply { leftMargin = dp(5) })
-        statRow.addView(statTile("RAM", ramText), LinearLayout.LayoutParams(0, dp(58), 1f).apply { leftMargin = dp(5) })
-        statRow.addView(statTile("GPU", "—"), LinearLayout.LayoutParams(0, dp(58), 1f).apply { leftMargin = dp(5) })
-        rightContent.addView(statRow, LinearLayout.LayoutParams(-1, dp(58)).apply { topMargin = dp(5) })
+        panelMetricViews.clear()
+        val statRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+        val cpuGauge = CircularStatView(this, "CPU", cpuText, percentFrom(cpuText), 0xFFB45CFF.toInt())
+        val fpsGauge = CircularStatView(this, "FPS", "—", null, 0xFF42D7F5.toInt())
+        val ramGauge = CircularStatView(this, "RAM", ramText, percentFrom(ramText), 0xFF48D6A0.toInt())
+        val gpuGauge = CircularStatView(this, "GPU", "—", null, 0xFFFFB85C.toInt())
+        listOf(cpuGauge, fpsGauge, ramGauge, gpuGauge).forEachIndexed { index, gauge ->
+            panelMetricViews.add(gauge)
+            statRow.addView(gauge, LinearLayout.LayoutParams(0, dp(82), 1f).apply {
+                if (index > 0) leftMargin = dp(2)
+            })
+        }
+        rightContent.addView(statRow, LinearLayout.LayoutParams(-1, dp(84)).apply { topMargin = dp(5) })
+        rightContent.addView(text("FPS/GPU chỉ hiện số khi Android hoặc Samsung cấp dữ liệu đo thực.", 7f, 0xFF8290AA.toInt(), false),
+            LinearLayout.LayoutParams(-1, dp(16)))
 
         val modeRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        modeRow.addView(actionChip("Hiệu năng", true) { showNotice("Chế độ hiệu năng", "Ứng dụng thường không thể tự ép xung CPU/GPU hoặc thay đổi Game Optimizing Service của Samsung.") }, LinearLayout.LayoutParams(0, dp(34), 1f))
-        modeRow.addView(actionChip("Cân bằng", false) { showNotice("Cân bằng", "Đây là tùy chọn giao diện; chế độ hiệu năng hệ thống do Samsung quản lý.") }, LinearLayout.LayoutParams(0, dp(34), 1f).apply { leftMargin = dp(6) })
-        modeRow.addView(actionChip("Tiết kiệm pin", false) { startActivitySafely(Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS)) }, LinearLayout.LayoutParams(0, dp(34), 1f).apply { leftMargin = dp(6) })
-        rightContent.addView(modeRow, LinearLayout.LayoutParams(-1, dp(34)).apply { topMargin = dp(6) })
+        modeChipViews.clear()
+        val modes = listOf(
+            "Hiệu năng" to "performance",
+            "Cân bằng" to "balanced",
+            "Tiết kiệm pin" to "battery"
+        )
+        modes.forEachIndexed { index, entry ->
+            val chip = actionChip(entry.first, entry.second) { selectGameMode(entry.second) }
+            modeChipViews[entry.second] = chip
+            modeRow.addView(chip, LinearLayout.LayoutParams(0, dp(36), 1f).apply {
+                if (index > 0) leftMargin = dp(5)
+            })
+        }
+        rightContent.addView(modeRow, LinearLayout.LayoutParams(-1, dp(36)).apply { topMargin = dp(5) })
+        updateModeChipStyles()
 
         val tools = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -507,33 +536,52 @@ class HudOverlayService : Service() {
     }
 
     private fun refreshPanelStats() {
-        if (panelMetricValues.size >= 4) {
-            panelMetricValues[0].text = cpuText
-            panelMetricValues[1].text = "—"
-            panelMetricValues[2].text = ramText
-            panelMetricValues[3].text = "—"
+        if (panelMetricViews.size >= 4) {
+            panelMetricViews[0].update(cpuText, percentFrom(cpuText))
+            // Android không cung cấp FPS của ứng dụng khác cho ứng dụng thường.
+            panelMetricViews[1].update("—", null)
+            panelMetricViews[2].update(ramText, percentFrom(ramText))
+            panelMetricViews[3].update("—", null)
         }
     }
 
-    private fun statTile(title: String, value: String): View {
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            background = rounded(0xFF171D2C.toInt(), 12)
-            addView(text(title, 9f, 0xFFB96BFF.toInt(), true))
+    private fun percentFrom(value: String): Int? =
+        value.removeSuffix("%").trim().toIntOrNull()?.coerceIn(0, 100)
+
+    private fun selectGameMode(mode: String) {
+        prefs.edit().putString(KEY_GAME_MODE, mode).apply()
+        updateModeChipStyles()
+        val message = when (mode) {
+            "performance" -> "Đã chọn Hiệu năng: HUD cập nhật nhanh hơn (700 ms)."
+            "battery" -> "Đã chọn Tiết kiệm pin: HUD giảm tần suất cập nhật (3 giây)."
+            else -> "Đã chọn Cân bằng: HUD cập nhật ở mức tiêu chuẩn (1,4 giây)."
         }
-        val valueView = text(value, 17f, Color.WHITE, true)
-        card.addView(valueView)
-        panelMetricValues.add(valueView)
-        card.addView(text(when (title) { "FPS", "GPU" -> "Cần quyền hệ thống"; else -> "Theo dõi" }, 7f, 0xFF8D9AB0.toInt(), false))
-        return card
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        handler.removeCallbacks(monitor)
+        handler.post(monitor)
     }
 
-    private fun actionChip(name: String, selected: Boolean, action: () -> Unit): View =
+    private fun updateModeChipStyles() {
+        val selected = prefs.getString(KEY_GAME_MODE, "balanced")
+        modeChipViews.forEach { (mode, chip) ->
+            val active = mode == selected
+            val color = when (mode) {
+                "performance" -> 0xFF9D4CFF.toInt()
+                "battery" -> 0xFF168B68.toInt()
+                else -> 0xFF2875C9.toInt()
+            }
+            chip.background = rounded(if (active) color else 0xFF252C3B.toInt(), 11)
+            chip.setTextColor(if (active) Color.WHITE else 0xFF9BA8BD.toInt())
+            chip.alpha = if (active) 1f else 0.82f
+        }
+    }
+
+    private fun actionChip(name: String, mode: String, action: () -> Unit): TextView =
         text(name, 9f, Color.WHITE, true).apply {
             gravity = Gravity.CENTER
-            background = rounded(if (selected) 0xFF7937BB.toInt() else 0xFF252C3B.toInt(), 18)
+            background = rounded(0xFF252C3B.toInt(), 11)
             setOnClickListener { action() }
+            post { updateModeChipStyles() }
         }
 
     private fun toolButton(name: String, action: () -> Unit): View {
@@ -774,21 +822,65 @@ class HudOverlayService : Service() {
 
     private fun showShortcutPicker() {
         val apps = launcherApps()
+        if (apps.isEmpty()) {
+            Toast.makeText(this, "Không tìm thấy ứng dụng có thể mở.", Toast.LENGTH_SHORT).show()
+            return
+        }
         val current = (prefs.getStringSet(KEY_SHORTCUTS, emptySet()) ?: emptySet()).toMutableSet()
-        // Không giới hạn 8/14 ứng dụng: danh sách ban đầu gồm mọi ứng dụng có thể mở.
-        if (current.isEmpty()) apps.forEach { current.add(it.activityInfo.packageName) }
-        val labels = apps.map { it.loadLabel(packageManager).toString() }.toTypedArray()
-        val checked = BooleanArray(apps.size) { current.contains(apps[it].activityInfo.packageName) }
-        val dialog = android.app.AlertDialog.Builder(this)
-            .setTitle("THÊM / CHỈNH SỬA ỨNG DỤNG")
-            .setMultiChoiceItems(labels, checked) { _, which, isChecked ->
-                val pkg = apps[which].activityInfo.packageName
-                if (isChecked) current.add(pkg) else current.remove(pkg)
+        val selected = current.toMutableSet()
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), dp(8), dp(14), dp(5))
+        }
+        content.addView(text("Chọn ứng dụng để ghim vào dải biểu tượng bên trái. Có thể chọn nhiều ứng dụng.", 11f, 0xFFB9C4D9.toInt(), false)
+            .apply { setPadding(0, 0, 0, dp(9)) })
+        val scroll = ScrollView(this).apply {
+            isVerticalScrollBarEnabled = true
+            overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
+        }
+        val rows = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        apps.forEach { app ->
+            val pkg = app.activityInfo.packageName
+            val checked = selected.contains(pkg)
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                background = rounded(if (checked) 0xFF25365A.toInt() else 0xFF141D2C.toInt(), 11)
+                setPadding(dp(9), dp(7), dp(8), dp(7))
             }
-            .setPositiveButton("LƯU") { _, _ ->
-                prefs.edit().putStringSet(KEY_SHORTCUTS, current.toSet()).apply()
+            row.addView(ImageView(this).apply {
+                setImageDrawable(app.loadIcon(packageManager))
+                scaleType = ImageView.ScaleType.FIT_CENTER
+            }, LinearLayout.LayoutParams(dp(34), dp(34)))
+            row.addView(text(app.loadLabel(packageManager).toString(), 11f, Color.WHITE, true),
+                LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(9) })
+            val check = android.widget.CheckBox(this).apply {
+                buttonTintList = android.content.res.ColorStateList.valueOf(
+                    if (checked) 0xFFAA70FF.toInt() else 0xFF8090AA.toInt()
+                )
+                isChecked = checked
+                setOnCheckedChangeListener { _, on ->
+                    if (on) selected.add(pkg) else selected.remove(pkg)
+                    row.background = rounded(if (on) 0xFF25365A.toInt() else 0xFF141D2C.toInt(), 11)
+                    buttonTintList = android.content.res.ColorStateList.valueOf(
+                        if (on) 0xFFAA70FF.toInt() else 0xFF8090AA.toInt()
+                    )
+                }
+            }
+            row.addView(check)
+            row.setOnClickListener { check.isChecked = !check.isChecked }
+            rows.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(5) })
+        }
+        scroll.addView(rows)
+        content.addView(scroll, LinearLayout.LayoutParams(-1, dp(360)))
+        val dialog = android.app.AlertDialog.Builder(this)
+            .setTitle("THÊM ỨNG DỤNG")
+            .setView(content)
+            .setPositiveButton("LƯU ỨNG DỤNG") { _, _ ->
+                prefs.edit().putStringSet(KEY_SHORTCUTS, selected.toSet()).apply()
                 closePanel()
                 openPanel()
+                Toast.makeText(this, "Đã lưu ${selected.size} ứng dụng vào dải HUD.", Toast.LENGTH_SHORT).show()
             }
             .setNeutralButton("HIỆN TẤT CẢ") { _, _ ->
                 prefs.edit().remove(KEY_SHORTCUTS).apply()
@@ -799,9 +891,10 @@ class HudOverlayService : Service() {
             .create()
         try {
             if (Build.VERSION.SDK_INT >= 26) {
-                 dialog.window?.setType(android.view.WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+                dialog.window?.setType(android.view.WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
             }
             dialog.show()
+            dialog.window?.setLayout(dp(340).coerceAtMost(resources.displayMetrics.widthPixels - dp(24)), -2)
         } catch (_: Exception) {
             Toast.makeText(this, "Không mở được danh sách ứng dụng.", Toast.LENGTH_SHORT).show()
         }
