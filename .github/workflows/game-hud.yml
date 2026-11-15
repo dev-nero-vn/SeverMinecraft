@@ -28,7 +28,8 @@ jobs:
           test -n "$ANDROID_HOME"
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --version || true
       - name: Install Android build tools
-        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "build-tools;36.0.0" "platforms;android-37"
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=1 --licenses || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=1 "build-tools;37.0.0" "platforms;android-37.0"
       - name: Dump APK metadata and permissions
         shell: bash
         run: |
@@ -93,7 +94,8 @@ jobs:
         with:
           gradle-version: '9.3.1'
       - name: Install Android 17 platform and build tools
-        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37" "build-tools;36.0.0" "platform-tools"
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=1 --licenses || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=1 "platforms;android-37.0" "build-tools;37.0.0" "platform-tools"
       - name: Build debug APK
         run: gradle --no-daemon -p game-hud assembleDebug
       - name: Verify APK package, SDK and signing
@@ -104,15 +106,19 @@ jobs:
           test -s "$APK"
           mkdir -p dist
           cp "$APK" dist/Nero-Game-HUD.apk
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs dist/Nero-Game-HUD.apk
-          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging dist/Nero-Game-HUD.apk | tee dist/apk-badging.txt
+          "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose --print-certs dist/Nero-Game-HUD.apk
+          "$ANDROID_HOME/build-tools/37.0.0/aapt" dump badging dist/Nero-Game-HUD.apk | tee dist/apk-badging.txt
           grep -q "package: name='vn.nero.gamehud'" dist/apk-badging.txt
           sha256sum dist/Nero-Game-HUD.apk | tee dist/SHA256SUMS.txt
+          cd dist
+          zip -q -j Nero-Game-HUD.zip Nero-Game-HUD.apk
+          unzip -t Nero-Game-HUD.zip
+          cd ..
       - name: Upload one installable APK
         uses: actions/upload-artifact@v4
         with:
-          name: Nero-Game-HUD-APK
-          path: dist/Nero-Game-HUD.apk
+          name: Nero-Game-HUD-ZIP
+          path: dist/Nero-Game-HUD.zip
           if-no-files-found: error
           retention-days: 30
       - name: Publish the single APK release asset
@@ -120,7 +126,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: nero-game-hud-1.0.1
-          name: Nero Game HUD 1.0.1 - APK Android
+          name: Nero Game HUD 1.0.1 - ZIP chứa APK Android
           body: |
             APK thử nghiệm cài trực tiếp cho Android 8.0+ và hướng tới Galaxy A07 Android 17 / One UI 9.
             - Một APK duy nhất: Nero-Game-HUD.apk
@@ -129,6 +135,6 @@ jobs:
             - Không thay thế các quyền hệ thống độc quyền của Samsung Game Booster.
           prerelease: true
           make_latest: false
-          files: dist/Nero-Game-HUD.apk
+          files: dist/Nero-Game-HUD.zip
           fail_on_unmatched_files: true
           overwrite_files: true
