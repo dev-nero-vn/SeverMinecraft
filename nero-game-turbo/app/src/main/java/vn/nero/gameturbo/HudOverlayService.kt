@@ -411,7 +411,16 @@ class HudOverlayService : Service() {
             }
             tools.addView(line, LinearLayout.LayoutParams(-1, dp(41)).apply { bottomMargin = dp(6) })
         }
-        body.addView(tools, LinearLayout.LayoutParams(-1, 0, 1f))
+        // Vùng công cụ bên phải phải cuộn dọc độc lập với dải ứng dụng bên trái.
+        val toolsScroll = ScrollView(this).apply {
+            isFillViewport = false
+            isVerticalScrollBarEnabled = true
+            scrollBarStyle = View.SCROLLBARS_INSIDE_INSET
+            overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
+            clipToPadding = false
+        }
+        toolsScroll.addView(tools, ScrollView.LayoutParams(-1, -2))
+        body.addView(toolsScroll, LinearLayout.LayoutParams(-1, 0, 1f))
 
         val footer = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
