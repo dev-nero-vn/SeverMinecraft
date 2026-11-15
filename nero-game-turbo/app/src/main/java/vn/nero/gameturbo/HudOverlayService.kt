@@ -359,29 +359,44 @@ class HudOverlayService : Service() {
                 isFocusable = true
                 var downX = 0f
                 var downY = 0f
+                var holdReady = false
                 var dragged = false
+                val holdRunnable = Runnable {
+                    holdReady = true
+                    tile.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                    tile.animate().scaleX(0.92f).scaleY(0.92f).setDuration(100).start()
+                }
                 setOnTouchListener { _, event ->
                     when (event.actionMasked) {
                         MotionEvent.ACTION_DOWN -> {
                             downX = event.rawX
                             downY = event.rawY
+                            holdReady = false
                             dragged = false
+                            handler.removeCallbacks(holdRunnable)
+                            handler.postDelayed(holdRunnable, 380L)
                             true
                         }
                         MotionEvent.ACTION_MOVE -> {
-                            if (!dragged && event.rawX - downX > dp(22)) {
+                            if (holdReady && !dragged &&
+                                (event.rawX - downX > dp(28) || kotlin.math.abs(event.rawY - downY) > dp(28))) {
                                 dragged = true
+                                handler.removeCallbacks(holdRunnable)
                                 launchApp(app.activityInfo.packageName, true)
                             }
                             true
                         }
                         MotionEvent.ACTION_UP -> {
-                            if (!dragged && kotlin.math.abs(event.rawX - downX) < dp(12) && kotlin.math.abs(event.rawY - downY) < dp(12)) {
-                                launchApp(app.activityInfo.packageName, false)
-                            }
+                            handler.removeCallbacks(holdRunnable)
+                            tile.animate().scaleX(1f).scaleY(1f).setDuration(100).start()
+                            if (!dragged) launchApp(app.activityInfo.packageName, false)
                             true
                         }
-                        MotionEvent.ACTION_CANCEL -> true
+                        MotionEvent.ACTION_CANCEL -> {
+                            handler.removeCallbacks(holdRunnable)
+                            tile.animate().scaleX(1f).scaleY(1f).setDuration(100).start()
+                            true
+                        }
                         else -> true
                     }
                 }
@@ -635,6 +650,18 @@ class HudOverlayService : Service() {
             gravity = Gravity.CENTER
             background = ripple(0xFF202A3C.toInt(), 13)
             setPadding(dp(3), dp(3), dp(3), dp(3))
+            setOnTouchListener { view, event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        view.animate().scaleX(0.94f).scaleY(0.94f).alpha(0.86f).setDuration(75).start()
+                        view.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        view.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(125).start()
+                    }
+                }
+                false
+            }
             addView(TextView(this@HudOverlayService).apply {
                 text = glyph
                 textSize = 19f
@@ -659,22 +686,97 @@ class HudOverlayService : Service() {
             "Menu ứng dụng" -> showShortcutPicker()
             "Quản lý game", "Chế độ game" -> showGamePicker()
             "Tùy chỉnh HUD" -> showHudSettings()
-            "Cửa sổ nổi" -> showNotice("Cửa sổ nổi", "Vuốt kéo biểu tượng ứng dụng từ dải bên trái sang phải. One UI sẽ quyết định ứng dụng có hỗ trợ cửa sổ nổi hay không.")
-            "Theo dõi hệ thống" -> showNotice("Theo dõi hệ thống", "CPU, RAM, pin và tần số màn hình được đọc từ Android. FPS/GPU của game cần quyền hệ thống nên Nero không hiển thị số giả.")
-            "Tăng cường cảm ứng", "Bảo vệ cảm ứng" -> showNotice(name, "Android không cấp cho ứng dụng bên thứ ba quyền điều khiển toàn bộ lớp cảm ứng của game khác.")
-            "Chụp màn hình", "Chụp" -> showNotice("Chụp màn hình", "Dùng phím Nguồn + Giảm âm lượng hoặc công cụ Chụp màn hình của Samsung.")
-            "Ghi màn hình", "Ghi" -> showNotice("Ghi màn hình", "Mở Bảng điều khiển nhanh của Samsung và chọn Ghi màn hình.")
-            "Chặn thông báo" -> startActivitySafely(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
+            "Cửa sổ nổi" -> showHudDialog(
+                "MỞ ỨNG DỤNG DẠNG CỬA SỔ",
+                "Giữ biểu tượng ứng dụng ở dải bên trái, kéo sang phải rồi thả. Nero gửi yêu cầu cửa sổ tự do cho Android; One UI chỉ mở pop-up nếu ứng dụng và thiết bị hỗ trợ."
+            )
+            "Theo dõi hệ thống" -> showStatsDetails()
+            "Tăng cường cảm ứng" -> showHudDialog(
+                "ĐỘ NHẠY CẢM ỨNG",
+                "Mở cài đặt Màn hình để kiểm tra tùy chọn Độ nhạy cảm ứng của thiết bị. Android không cho ứng dụng bên thứ ba tự thay đổi bộ điều khiển cảm ứng của game."
+            ) { startActivitySafely(Intent(Settings.ACTION_DISPLAY_SETTINGS)) }
+            "Bảo vệ cảm ứng" -> showHudDialog(
+                "BẢO VỆ CẢM ỨNG",
+                "Android không cấp quyền để Nero chặn hoặc thay đổi mọi thao tác chạm bên trong game khác. Bạn có thể dùng tính năng chống chạm nhầm có sẵn trong game hoặc One UI."
+            )
+            "Chụp màn hình", "Chụp" -> showHudDialog(
+                "CHỤP MÀN HÌNH",
+                "Trên Galaxy, nhấn đồng thời phím Nguồn và Giảm âm lượng. Bạn cũng có thể dùng nút Chụp màn hình trong Bảng điều khiển nhanh."
+            )
+            "Ghi màn hình", "Ghi" -> showHudDialog(
+                "GHI MÀN HÌNH",
+                "Mở Bảng điều khiển nhanh của Samsung, chọn Ghi màn hình rồi xác nhận bắt đầu ghi. Android yêu cầu xác nhận riêng cho mỗi phiên ghi màn hình."
+            )
+            "Chặn thông báo", "Chế độ im lặng" -> toggleDoNotDisturb()
             "Hẹn giờ" -> startActivitySafely(
                 Intent(android.provider.AlarmClock.ACTION_SET_TIMER)
                     .putExtra(android.provider.AlarmClock.EXTRA_LENGTH, 30 * 60)
                     .putExtra(android.provider.AlarmClock.EXTRA_MESSAGE, "Nero Game Turbo")
             )
-            "Đổi giọng nói" -> showNotice("Đổi giọng nói", "Đổi giọng nói trong ứng dụng game cần quyền âm thanh đặc quyền của hệ thống; Nero không giả lập nút này.")
+            "Đổi giọng nói" -> showHudDialog(
+                "ĐỔI GIỌNG NÓI",
+                "Đổi giọng nói trực tiếp trong mọi game cần xử lý âm thanh ở cấp hệ thống hoặc hỗ trợ riêng từ game. Nero không giả lập tính năng này."
+            ) { startActivitySafely(Intent(Settings.ACTION_SOUND_SETTINGS)) }
             "Âm thanh" -> startActivitySafely(Intent(Settings.ACTION_SOUND_SETTINGS))
             "Độ sáng" -> startActivitySafely(Intent(Settings.ACTION_DISPLAY_SETTINGS))
-            "Cài đặt Android", "Cài đặt" -> startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            "Chế độ im lặng" -> startActivitySafely(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
+            "Cài đặt Android", "Cài đặt" -> startActivitySafely(Intent(Settings.ACTION_SETTINGS))
+        }
+    }
+
+    private fun showHudDialog(
+        title: String,
+        message: String,
+        actionLabel: String = "ĐÃ HIỂU",
+        action: (() -> Unit)? = null
+    ) {
+        val dialog = android.app.AlertDialog.Builder(this)
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton(actionLabel) { _, _ -> action?.invoke() }
+            .setNegativeButton(if (action != null) "ĐÓNG" else null, null)
+            .create()
+        try {
+            if (Build.VERSION.SDK_INT >= 26) {
+                dialog.window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+            }
+            dialog.show()
+        } catch (_: Exception) {
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun showStatsDetails() {
+        val body = "CPU: $cpuText\nRAM: $ramText\nTần số màn hình: $hzText\nFPS: Chưa có quyền đo khung hình của game khác.\n\nCPU và RAM sẽ cập nhật khi bảng HUD đang mở."
+        showHudDialog("THEO DÕI HỆ THỐNG", body)
+    }
+
+    private fun toggleDoNotDisturb() {
+        if (Build.VERSION.SDK_INT < 23) {
+            showHudDialog("CHẾ ĐỘ IM LẶNG", "Thiết bị chưa hỗ trợ điều khiển chế độ Không làm phiền từ Nero.")
+            return
+        }
+        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        if (!manager.isNotificationPolicyAccessGranted) {
+            showHudDialog(
+                "CẤP QUYỀN KHÔNG LÀM PHIỀN",
+                "Cho phép Nero truy cập chính sách thông báo để bật hoặc tắt chế độ Không làm phiền.",
+                "MỞ CÀI ĐẶT"
+            ) { startActivitySafely(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) }
+            return
+        }
+        try {
+            val enabling = manager.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_NONE
+            manager.setInterruptionFilter(
+                if (enabling) NotificationManager.INTERRUPTION_FILTER_NONE
+                else NotificationManager.INTERRUPTION_FILTER_ALL
+            )
+            Toast.makeText(
+                this,
+                if (enabling) "Đã bật Không làm phiền." else "Đã tắt Không làm phiền.",
+                Toast.LENGTH_SHORT
+            ).show()
+        } catch (_: SecurityException) {
+            showHudDialog("KHÔNG LÀM PHIỀN", "Android từ chối quyền điều khiển chế độ Không làm phiền.")
         }
     }
 
