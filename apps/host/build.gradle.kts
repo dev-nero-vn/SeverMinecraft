@@ -19,8 +19,8 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures { buildConfig = true }
+    kotlinOptions { jvmTarget = "17" }
 }
-kotlinOptions { jvmTarget = "17" }
 dependencies {
     implementation(project(":shared"))
     implementation("androidx.core:core-ktx:1.17.0")
