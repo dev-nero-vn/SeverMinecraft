@@ -84,6 +84,8 @@ jobs:
         uses: actions/checkout@v4
       - name: Unpack independent HUD project
         run: unzip -q game-hud-project.zip -d .
+      - name: Apply verified Kotlin source correction
+        run: cp game-hud-overrides/ShortcutPickerActivity.kt game-hud/app/src/main/java/vn/nero/gamehud/ShortcutPickerActivity.kt
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
