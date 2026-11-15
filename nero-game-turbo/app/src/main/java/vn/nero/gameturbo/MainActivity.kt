@@ -110,6 +110,14 @@ class MainActivity : Activity() {
             setContentView(root)
             root.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(260).start()
             refreshButton()
+            // Khôi phục dịch vụ sau khi mở lại app, chỉ khi HUD đã được người dùng bật và đủ quyền.
+            if (prefs.getBoolean(HudOverlayService.KEY_HUD_ENABLED, false)) {
+                if (hasOverlayPermission() && hasUsageAccess()) {
+                    startHudService()
+                } else {
+                    disableHud("Quyền HUD đã bị thu hồi. Hãy bật lại HUD để cấp quyền.")
+                }
+            }
         }, 800L)
     }
 
