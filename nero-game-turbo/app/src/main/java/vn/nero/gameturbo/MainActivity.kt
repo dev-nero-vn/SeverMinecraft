@@ -51,6 +51,9 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        // Sau khi quay lại từ Cài đặt Android, tiếp tục bước cấp quyền kế tiếp nếu còn thiếu.
+        permissionPrompted = false
+        permissionDialogOpen = false
         apps = loadApps()
         if (::root.isInitialized) render()
         handler.postDelayed({ ensureGameSpaceService() }, 300L)
