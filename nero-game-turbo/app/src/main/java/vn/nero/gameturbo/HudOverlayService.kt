@@ -399,6 +399,9 @@ class HudOverlayService : Service() {
             listOf("Menu ứng dụng", "Tăng cường cảm ứng"),
             listOf("Bảo vệ cảm ứng", "Chụp màn hình"),
             listOf("Ghi màn hình", "Chặn thông báo"),
+            listOf("Đổi giọng nói", "Hẹn giờ"),
+            listOf("Âm thanh", "Độ sáng"),
+            listOf("Cài đặt Android", "Chế độ im lặng"),
         )
         toolRows.forEach { row ->
             val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
@@ -522,7 +525,11 @@ class HudOverlayService : Service() {
                     .putExtra(android.provider.AlarmClock.EXTRA_LENGTH, 30 * 60)
                     .putExtra(android.provider.AlarmClock.EXTRA_MESSAGE, "Nero Game Turbo")
             )
-            "Cài đặt" -> startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            "Đổi giọng nói" -> showNotice("Đổi giọng nói", "Đổi giọng nói trong ứng dụng game cần quyền âm thanh đặc quyền của hệ thống; Nero không giả lập nút này.")
+            "Âm thanh" -> startActivitySafely(Intent(Settings.ACTION_SOUND_SETTINGS))
+            "Độ sáng" -> startActivitySafely(Intent(Settings.ACTION_DISPLAY_SETTINGS))
+            "Cài đặt Android", "Cài đặt" -> startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            "Chế độ im lặng" -> startActivitySafely(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
         }
     }
 
