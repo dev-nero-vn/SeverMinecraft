@@ -1,0 +1,136 @@
+name: Game HUD - Phân tích APK tham chiếu và build APK
+
+on:
+  push:
+    branches: [game-hud]
+    paths:
+      - 'game-hud/**'
+      - 'game-hud-project.zip'
+      - '.github/workflows/game-hud.yml'
+      - 'Samsung+Game+Booster_8.0.02.35_APKPure.apk'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  analyze-samsung-reference:
+    name: Đọc APK Samsung trong runner
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Unpack independent HUD project
+        run: unzip -q game-hud-project.zip -d .
+      - name: Set up Android SDK tools
+        uses: android-actions/setup-android@v3
+      - name: Install Android build tools
+        run: sdkmanager "build-tools;36.0.0" "platforms;android-37"
+      - name: Dump APK metadata and permissions
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="Samsung+Game+Booster_8.0.02.35_APKPure.apk"
+          test -s "$APK"
+          mkdir -p analysis/reference
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" > analysis/reference/badging.txt
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump permissions "$APK" > analysis/reference/permissions.txt
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump xmltree "$APK" AndroidManifest.xml > analysis/reference/manifest-tree.txt
+          echo "APK size: $(stat -c '%s' "$APK") bytes" | tee analysis/reference/file-info.txt
+          sha256sum "$APK" | tee -a analysis/reference/file-info.txt
+      - name: Decompile for internal feature inventory only
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          META="$(curl -fsSL https://api.github.com/repos/skylot/jadx/releases/latest)"
+          URL="$(python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(a["browser_download_url"] for a in d["assets"] if a["name"].endswith(".zip") and a["name"].startswith("jadx-")))' <<< "$META")"
+          curl -fsSL "$URL" -o /tmp/jadx.zip
+          mkdir -p /tmp/jadx
+          unzip -q /tmp/jadx.zip -d /tmp/jadx
+          chmod +x /tmp/jadx/bin/jadx
+          mkdir -p /tmp/samsung-jadx
+          /tmp/jadx/bin/jadx --no-res --threads-count 2 -d /tmp/samsung-jadx 'Samsung+Game+Booster_8.0.02.35_APKPure.apk' > /tmp/jadx.log 2>&1 || true
+          echo "JADX_OUTPUT_FILES=$(find /tmp/samsung-jadx -type f -name '*.java' | wc -l)" >> "$GITHUB_ENV"
+      - name: Write non-source analysis report
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p analysis
+          python3 game-hud/tools/summarize_reference.py analysis/reference/badging.txt analysis/reference/permissions.txt /tmp/samsung-jadx analysis/SAMSUNG_APK_ANALYSIS.md
+          cat analysis/SAMSUNG_APK_ANALYSIS.md >> "$GITHUB_STEP_SUMMARY"
+          echo "JADX feature inventory completed when tooling was available." >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload metadata-only analysis report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: samsung-game-booster-analysis-report
+          path: |
+            analysis/SAMSUNG_APK_ANALYSIS.md
+            analysis/reference/file-info.txt
+            analysis/reference/badging.txt
+            analysis/reference/permissions.txt
+          if-no-files-found: warn
+          retention-days: 14
+
+  build-apk:
+    name: Build Nero Game HUD APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Unpack independent HUD project
+        run: unzip -q game-hud-project.zip -d .
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install Android 17 platform and build tools
+        run: sdkmanager "platforms;android-37" "build-tools;36.0.0" "platform-tools"
+      - name: Build debug APK
+        run: gradle --no-daemon -p game-hud assembleDebug
+      - name: Verify APK package, SDK and signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="game-hud/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          mkdir -p dist
+          cp "$APK" dist/Nero-Game-HUD.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs dist/Nero-Game-HUD.apk
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging dist/Nero-Game-HUD.apk | tee dist/apk-badging.txt
+          grep -q "package: name='vn.nero.gamehud'" dist/apk-badging.txt
+          sha256sum dist/Nero-Game-HUD.apk | tee dist/SHA256SUMS.txt
+      - name: Upload one installable APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nero-Game-HUD-APK
+          path: dist/Nero-Game-HUD.apk
+          if-no-files-found: error
+          retention-days: 30
+      - name: Publish the single APK release asset
+        if: github.event_name == 'push' && github.ref == 'refs/heads/game-hud'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nero-game-hud-1.0.1
+          name: Nero Game HUD 1.0.1 - APK Android
+          body: |
+            APK thử nghiệm cài trực tiếp cho Android 8.0+ và hướng tới Galaxy A07 Android 17 / One UI 9.
+            - Một APK duy nhất: Nero-Game-HUD.apk
+            - Không quảng cáo, không tài khoản, không quyền Internet.
+            - Bản debug ký bằng debug key; cần kiểm thử trên thiết bị thật.
+            - Không thay thế các quyền hệ thống độc quyền của Samsung Game Booster.
+          prerelease: true
+          make_latest: false
+          files: dist/Nero-Game-HUD.apk
+          fail_on_unmatched_files: true
+          overwrite_files: true
