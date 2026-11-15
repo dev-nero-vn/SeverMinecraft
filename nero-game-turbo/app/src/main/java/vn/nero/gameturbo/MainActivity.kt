@@ -41,6 +41,7 @@ class MainActivity : Activity() {
     private lateinit var cpuValue: TextView
     private lateinit var ramValue: TextView
     private lateinit var permissionHint: TextView
+    private lateinit var hudButton: Button
     private var permissionStep = 0
     private var lastStats: DeviceStats.Snapshot? = null
 
@@ -67,11 +68,10 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         updatePermissionHint()
+        updateHudButton()
         handler.removeCallbacks(refreshStats)
         handler.post(refreshStats)
-        if (prefs.getBoolean("hud_enabled", false) && hasOverlayPermission() && hasUsageAccess()) {
-            startHudService()
-        }
+        continuePermissionFlow()
     }
 
     override fun onPause() {
@@ -254,8 +254,8 @@ class MainActivity : Activity() {
         }
         permissionHint = label("Bật quyền để hiển thị HUD khi chơi game", 9f, 0xFFC4CEE0.toInt(), false)
         permissionBox.addView(permissionHint, LinearLayout.LayoutParams(0, -2, 1f))
-        permissionBox.addView(button("BẬT HUD", 0xFF8538D1.toInt(), Color.WHITE) { enableHudFlow() },
-            LinearLayout.LayoutParams(dp(112), dp(34)))
+        hudButton = button("BẬT HUD", 0xFF8538D1.toInt(), Color.WHITE) { toggleHud() }
+        permissionBox.addView(hudButton, LinearLayout.LayoutParams(dp(112), dp(34)))
         content.addView(permissionBox, LinearLayout.LayoutParams(-1, dp(46)).apply { topMargin = dp(7) })
 
         root.addView(content, LinearLayout.LayoutParams(0, -1, 1f))
@@ -416,21 +416,68 @@ class MainActivity : Activity() {
         return mode == AppOpsManager.MODE_ALLOWED
     }
 
+    private fun toggleHud() {
+        if (prefs.getBoolean("hud_enabled", false)) {
+            prefs.edit().putBoolean("hud_enabled", false).apply()
+            stopService(Intent(this, HudOverlayService::class.java))
+            permissionStep = 0
+            updatePermissionHint()
+            updateHudButton()
+            Toast.makeText(this, "Đã tắt Nero Game HUD", Toast.LENGTH_SHORT).show()
+        } else {
+            enableHudFlow()
+        }
+    }
+
     private fun enableHudFlow() {
+        prefs.edit().putBoolean("hud_enabled", true).apply()
+        when {
+            !hasOverlayPermission() -> {
+                permissionStep = 1
+                Toast.makeText(this, "Bật quyền Hiển thị trên ứng dụng khác cho Nero", Toast.LENGTH_LONG).show()
+                startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+            }
+            !hasUsageAccess() -> {
+                permissionStep = 2
+                Toast.makeText(this, "Bật quyền Truy cập dữ liệu sử dụng để tự nhận diện game", Toast.LENGTH_LONG).show()
+                startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+            }
+            else -> {
+                permissionStep = 0
+                startHudService()
+                Toast.makeText(this, "Nero Game HUD đã bật. Mở trò chơi để kiểm tra tay nắm.", Toast.LENGTH_LONG).show()
+            }
+        }
+        updatePermissionHint()
+        updateHudButton()
+    }
+
+    private fun continuePermissionFlow() {
+        if (!prefs.getBoolean("hud_enabled", false)) return
         if (!hasOverlayPermission()) {
-            Toast.makeText(this, "Cho phép Nero hiển thị trên ứng dụng khác", Toast.LENGTH_LONG).show()
-            startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+            updatePermissionHint()
             return
         }
         if (!hasUsageAccess()) {
-            Toast.makeText(this, "Cho phép quyền truy cập dữ liệu sử dụng để nhận diện game đang mở", Toast.LENGTH_LONG).show()
-            startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+            if (permissionStep == 1) {
+                permissionStep = 2
+                Toast.makeText(this, "Tiếp theo, bật quyền Truy cập dữ liệu sử dụng cho Nero", Toast.LENGTH_LONG).show()
+                startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+            }
+            updatePermissionHint()
             return
         }
-        prefs.edit().putBoolean("hud_enabled", true).apply()
+        permissionStep = 0
         startHudService()
         updatePermissionHint()
-        Toast.makeText(this, "Nero Game HUD đã bật. Mở game để kiểm tra tay nắm.", Toast.LENGTH_LONG).show()
+        updateHudButton()
+    }
+
+    private fun updateHudButton() {
+        if (!::hudButton.isInitialized) return
+        val enabled = prefs.getBoolean("hud_enabled", false)
+        hudButton.text = if (enabled) "TẮT HUD" else "BẬT HUD"
+        hudButton.setBackground(rippleBackground(if (enabled) 0xFF285845.toInt() else 0xFF8538D1.toInt(), 12))
     }
 
     private fun startHudService() {
@@ -439,11 +486,12 @@ class MainActivity : Activity() {
     }
 
     private fun updatePermissionHint() {
-        val enabled = hasOverlayPermission() && hasUsageAccess()
+        val running = prefs.getBoolean("hud_enabled", false)
         permissionHint.text = when {
             !hasOverlayPermission() -> "Cần quyền Hiển thị trên ứng dụng khác"
-            !hasUsageAccess() -> "Cần quyền truy cập dữ liệu sử dụng để phát hiện game"
-            else -> "Đã sẵn sàng · HUD chỉ hiện khi game được nhận diện"
+            !hasUsageAccess() -> "Cần quyền truy cập dữ liệu sử dụng để nhận diện game"
+            running -> "Đang bật · HUD chỉ hiện khi game được nhận diện"
+            else -> "Đã sẵn sàng · Chưa bật HUD"
         }
     }
 
