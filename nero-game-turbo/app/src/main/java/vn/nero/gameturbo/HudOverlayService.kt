@@ -463,7 +463,7 @@ class HudOverlayService : Service() {
             }, LinearLayout.LayoutParams(0, dp(32), 1f).apply { leftMargin = dp(3); rightMargin = dp(3) })
         }
         rightContent.addView(footer, LinearLayout.LayoutParams(-1, dp(38)).apply { topMargin = dp(6); bottomMargin = dp(6) })
-        rightScroll.addView(rightContent, ScrollView.LayoutParams(-1, -2))
+        rightScroll.addView(rightContent, FrameLayout.LayoutParams(-1, -2))
         body.addView(rightScroll, LinearLayout.LayoutParams(-1, -1))
         root.addView(body, LinearLayout.LayoutParams(0, -1, 1f))
 
