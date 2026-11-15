@@ -23,6 +23,9 @@ class RtcSession(
     private var textureHelper: SurfaceTextureHelper? = null
     private var videoSource: VideoSource? = null
     private var screenTrack: VideoTrack? = null
+    private val pendingIce = mutableListOf<IceCandidate>()
+    @Volatile private var remoteDescriptionSet = false
+    @Volatile private var controllerOfferStarted = false
     private val disposed = AtomicBoolean(false)
     val eglContext get() = egl.eglBaseContext
 
@@ -54,12 +57,20 @@ class RtcSession(
 
     fun startAsController() {
         check(!isHost)
+        if (controllerOfferStarted) return
+        controllerOfferStarted = true
         ensurePeer()
+        peer?.addTransceiver(
+            MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO,
+            RtpTransceiver.RtpTransceiverInit(RtpTransceiver.RtpTransceiverDirection.RECV_ONLY)
+        )
         dataChannel = peer?.createDataChannel("nero-control", DataChannel.Init().apply { ordered = true })
         observeDataChannel(dataChannel)
-        peer?.createOffer(sdpObserver(onCreated = { desc ->
-            peer?.setLocalDescription(sdpObserver(), desc)
-            signal.send("offer", JSONObject().put("type", desc.type.canonicalForm()).put("sdp", desc.description))
+        peer?.createOffer(sdpObserver(onCreated = { offer ->
+            peer?.setLocalDescription(sdpObserver(onSet = {
+                val local = peer?.localDescription ?: offer
+                signal.send("offer", JSONObject().put("type", local.type.canonicalForm()).put("sdp", local.description))
+            }), offer)
         }), MediaConstraints())
     }
 
@@ -71,19 +82,38 @@ class RtcSession(
                 screenTrack?.let { peer?.addTrack(it, listOf("nero-stream")) }
                 val desc = SessionDescription(SessionDescription.Type.OFFER, payload.optString("sdp"))
                 peer?.setRemoteDescription(sdpObserver(onSet = {
+                    remoteDescriptionSet = true
+                    applyPendingIce()
                     peer?.createAnswer(sdpObserver(onCreated = { answer ->
-                        peer?.setLocalDescription(sdpObserver(), answer)
-                        signal.send("answer", JSONObject().put("type", answer.type.canonicalForm()).put("sdp", answer.description))
+                        peer?.setLocalDescription(sdpObserver(onSet = {
+                            val local = peer?.localDescription ?: answer
+                            signal.send("answer", JSONObject().put("type", local.type.canonicalForm()).put("sdp", local.description))
+                        }), answer)
                     }), MediaConstraints())
                 }), desc)
             }
             "answer" -> {
                 if (isHost) return
-                peer?.setRemoteDescription(sdpObserver(), SessionDescription(SessionDescription.Type.ANSWER, payload.optString("sdp")))
+                val desc = SessionDescription(SessionDescription.Type.ANSWER, payload.optString("sdp"))
+                peer?.setRemoteDescription(sdpObserver(onSet = {
+                    remoteDescriptionSet = true
+                    applyPendingIce()
+                }), desc)
             }
-            "ice" -> peer?.addIceCandidate(IceCandidate(payload.optString("sdpMid"), payload.optInt("sdpMLineIndex"), payload.optString("candidate")))
+            "ice" -> {
+                val candidate = IceCandidate(payload.optString("sdpMid"), payload.optInt("sdpMLineIndex"), payload.optString("candidate"))
+                if (remoteDescriptionSet) peer?.addIceCandidate(candidate)
+                else synchronized(pendingIce) { pendingIce.add(candidate) }
+            }
             "resume" -> screenTrack?.setEnabled(true)
         }
+    }
+
+    private fun applyPendingIce() {
+        val queued = synchronized(pendingIce) {
+            pendingIce.toList().also { pendingIce.clear() }
+        }
+        queued.forEach { peer?.addIceCandidate(it) }
     }
 
     fun setScreenEnabled(enabled: Boolean) { screenTrack?.setEnabled(enabled) }

@@ -13,7 +13,9 @@ class ControllerActivity : AppCompatActivity() {
  private lateinit var status: TextView
  private lateinit var codeInput: EditText
  private lateinit var video: SurfaceViewRenderer
+ private val prefs by lazy { getSharedPreferences("nero-controller", MODE_PRIVATE) }
  private var rendererReady = false
+ private var offerStarted = false
  private var signal: RealtimeSignalClient? = null
  private var rtc: RtcSession? = null
  private var downX = 0f
@@ -23,7 +25,7 @@ class ControllerActivity : AppCompatActivity() {
   super.onCreate(savedInstanceState)
   val root = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(20,20,20,16); setBackgroundColor(0xFF09111F.toInt()) }
   val title = TextView(this).apply { text="NERO REMOTE · CONTROLLER"; textSize=20f; setTextColor(0xFFF4F7FF.toInt()); gravity=Gravity.CENTER_VERTICAL }
-  codeInput = EditText(this).apply { hint="Nhập mã Host (12 ký tự trở lên)"; isSingleLine=true; setTextColor(-1); setHintTextColor(0xFF93A5BF.toInt()) }
+  codeInput = EditText(this).apply { hint="Nhập mã Host (12 ký tự trở lên)"; isSingleLine=true; setTextColor(-1); setHintTextColor(0xFF93A5BF.toInt()); setText(prefs.getString("last_code", "")) }
   val connect = Button(this).apply { text="Kết nối"; setOnClickListener { connectToHost() } }
   val resume = Button(this).apply { text="Tiếp tục chia sẻ màn hình"; setOnClickListener { rtc?.sendControl(JSONObject().put("action","resume")); signal?.send("resume") } }
   val navigation = LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
@@ -39,12 +41,19 @@ class ControllerActivity : AppCompatActivity() {
  private fun connectToHost() {
   val code=PairingCode.normalize(codeInput.text.toString())
   if(!PairingCode.isValid(code)){ status.text="Mã cần ít nhất 12 ký tự hợp lệ."; return }
+  prefs.edit().putString("last_code", code).apply()
   cleanup()
   status.text="Đang kết nối máy chủ..."
   lateinit var client: RealtimeSignalClient
   client=RealtimeSignalClient(BuildConfig.SUPABASE_URL,BuildConfig.SUPABASE_KEY,code,
-   onReady={ client.send("connect_request",JSONObject().put("client","nero-controller")); rtc?.startAsController() },
-   onEvent={ event,payload -> rtc?.handleSignal(event,payload) },
+   onReady={ client.send("connect_request",JSONObject().put("client","nero-controller")); runOnUiThread { status.text="Đang chờ Host xác nhận kết nối..." } },
+   onEvent={ event,payload ->
+    if (event == "host_ready" && !offerStarted) {
+     offerStarted=true
+     rtc?.startAsController()
+     runOnUiThread { status.text="Đang thiết lập phiên WebRTC..." }
+    } else rtc?.handleSignal(event,payload)
+   },
    onStatus={ message -> runOnUiThread { status.text=message } })
   signal=client
   val session=RtcSession(this,client,false,onRemoteVideo={ track:VideoTrack ->
@@ -67,6 +76,6 @@ class ControllerActivity : AppCompatActivity() {
    }
   }
  }
- private fun cleanup(){ signal?.close(); signal=null; rtc?.dispose(); rtc=null }
+ private fun cleanup(){ offerStarted=false; signal?.close(); signal=null; rtc?.dispose(); rtc=null }
  override fun onDestroy(){ if(::video.isInitialized && rendererReady) video.release(); cleanup(); super.onDestroy() }
 }

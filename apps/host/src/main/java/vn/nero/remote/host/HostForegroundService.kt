@@ -66,11 +66,19 @@ class HostForegroundService : Service() {
         client = RealtimeSignalClient(BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_KEY, code,
             onReady = { client.send("host_ready", JSONObject().put("device", "nero-host")) },
             onEvent = { event, payload ->
-                if (event == "resume") {
-                    lastRemoteActivity = SystemClock.elapsedRealtime()
-                    rtc?.setScreenEnabled(true)
-                    streamPaused = false
-                } else rtc?.handleSignal(event, payload)
+                when (event) {
+                    "connect_request" -> {
+                        client.send("host_ready", JSONObject().put("device", "nero-host"))
+                        updateNotification("Có thiết bị Controller đang kết nối")
+                    }
+                    "resume" -> {
+                        lastRemoteActivity = SystemClock.elapsedRealtime()
+                        rtc?.setScreenEnabled(true)
+                        streamPaused = false
+                        updateNotification("Đang chia sẻ màn hình với Controller")
+                    }
+                    else -> rtc?.handleSignal(event, payload)
+                }
             },
             onStatus = { message -> updateNotification(message) })
         return client
