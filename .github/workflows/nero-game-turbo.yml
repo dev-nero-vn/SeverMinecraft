@@ -1,0 +1,99 @@
+name: Nero Game Turbo - Build APK ZIP
+
+on:
+  push:
+    branches: [game-hud]
+    paths:
+      - 'nero-game-turbo/**'
+      - '.github/workflows/nero-game-turbo.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nero-game-turbo-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and verify Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Lấy mã nguồn
+        uses: actions/checkout@v4
+
+      - name: Cài JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Cài Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+
+      - name: Cài Android SDK 36
+        uses: android-actions/setup-android@v3
+
+      - name: Cài Android platform và build tools
+        run: |
+          yes | sdkmanager --licenses
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Kiểm tra cấu trúc dự án
+        run: |
+          test -f nero-game-turbo/settings.gradle.kts
+          test -f nero-game-turbo/app/src/main/AndroidManifest.xml
+          test -f nero-game-turbo/app/src/main/java/vn/nero/gameturbo/MainActivity.kt
+          test -f nero-game-turbo/app/src/main/java/vn/nero/gameturbo/HudOverlayService.kt
+          test -f nero-game-turbo/app/src/main/java/vn/nero/gameturbo/DeviceStats.kt
+
+      - name: Build APK debug
+        run: gradle --no-daemon -p nero-game-turbo :app:assembleDebug
+
+      - name: Xác minh APK và đóng ZIP chỉ chứa APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="nero-game-turbo/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          mkdir -p dist
+          cp "$APK" dist/Nero-Game-Turbo.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose dist/Nero-Game-Turbo.apk
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging dist/Nero-Game-Turbo.apk | tee dist/apk-badging.txt
+          grep -q "package: name='vn.nero.gamehud'" dist/apk-badging.txt
+          sha256sum dist/Nero-Game-Turbo.apk | tee dist/SHA256SUMS.txt
+          cd dist
+          zip -q -j Nero-Game-Turbo.zip Nero-Game-Turbo.apk
+          unzip -t Nero-Game-Turbo.zip
+
+      - name: Tải ZIP APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nero-Game-Turbo-ZIP
+          path: dist/Nero-Game-Turbo.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Phát hành bản thử nghiệm
+        if: github.event_name == 'push' && github.ref == 'refs/heads/game-hud'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nero-game-turbo-1.2.0
+          name: Nero Game Turbo 1.2.0 - APK ZIP
+          body: |
+            Bản thử nghiệm giao diện Game Turbo tiếng Việt cho điện thoại Galaxy.
+            - Mở giao diện chính ở chế độ ngang (Landscape).
+            - Tay nắm dọc cố định ở mép trái khi nhận diện game đã chọn.
+            - Dải logo ứng dụng và bảng công cụ HUD.
+            - Vuốt kéo biểu tượng ứng dụng để yêu cầu mở trong cửa sổ pop-up One UI.
+            - CPU/RAM là số liệu Android đọc được; FPS/GPU phụ thuộc khả năng hệ thống.
+            - APK debug chỉ để thử nghiệm; chưa chứng nhận tương thích trên mọi thiết bị.
+          prerelease: true
+          make_latest: false
+          files: dist/Nero-Game-Turbo.zip
+          fail_on_unmatched_files: true
+          overwrite_files: true
