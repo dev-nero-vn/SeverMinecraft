@@ -268,7 +268,8 @@ class HudOverlayService : Service() {
                 }
                 MotionEvent.ACTION_UP -> {
                     val deltaX = event.rawX - downX
-                    if (deltaX > dp(8) || kotlin.math.abs(event.rawY - downY) < dp(18)) {
+                    val deltaY = event.rawY - downY
+                    if (deltaX > dp(12) && kotlin.math.abs(deltaX) > kotlin.math.abs(deltaY) * 1.15f) {
                         openPanel()
                     }
                     true
