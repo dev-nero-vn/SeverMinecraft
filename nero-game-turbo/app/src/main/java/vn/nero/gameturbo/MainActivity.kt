@@ -15,6 +15,7 @@ import android.provider.Settings
 import android.view.Gravity
 import android.widget.Button
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.Toast
 
 class MainActivity : Activity() {
@@ -63,13 +64,32 @@ class MainActivity : Activity() {
             setOnClickListener { toggleHud() }
         }
         val buttonWidth = (resources.displayMetrics.widthPixels * 0.72f).toInt()
+        toggleButton.alpha = 0f
         root.addView(toggleButton, FrameLayout.LayoutParams(buttonWidth, dp(58), Gravity.CENTER))
+
+        // Màn hình mở đầu bằng logo Nero tự thiết kế, sau đó chỉ còn nút BẬT/TẮT HUD.
+        val logo = ImageView(this).apply {
+            setImageResource(R.drawable.nero_logo_animated)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            contentDescription = "Biểu trưng Nero Game Turbo"
+        }
+        root.addView(logo, FrameLayout.LayoutParams(dp(112), dp(112), Gravity.CENTER))
 
         setContentView(root)
         root.alpha = 0f
-        root.scaleX = 0.985f
-        root.scaleY = 0.985f
-        root.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(260).start()
+        root.scaleX = 0.97f
+        root.scaleY = 0.97f
+        root.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(300).start()
+        (logo.drawable as? android.graphics.drawable.AnimatedVectorDrawable)?.start()
+        logo.animate().alpha(0f).setStartDelay(850).setDuration(220).withEndAction {
+            logo.visibility = android.view.View.GONE
+            toggleButton.animate().alpha(1f).translationY(0f).setDuration(260).start()
+        }.start()
+        android.animation.ObjectAnimator.ofFloat(toggleButton, "translationY", 0f, -dp(2).toFloat(), 0f).apply {
+            duration = 2400
+            repeatCount = android.animation.ValueAnimator.INFINITE
+            start()
+        }
     }
 
     private fun toggleHud() {
