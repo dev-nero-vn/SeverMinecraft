@@ -84,8 +84,10 @@ class HudOverlayService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_REFRESH -> {
-                if (panelOpen) closePanel()
-                if (gripView != null) removeGrip()
+                closePanel()
+                removeGrip()
+                currentGamePackage = null
+                currentGameName = "Đang chờ trò chơi"
             }
             ACTION_START, null -> Unit
         }
@@ -505,7 +507,11 @@ class HudOverlayService : Service() {
             "Chụp màn hình", "Chụp" -> showNotice("Chụp màn hình", "Dùng phím Nguồn + Giảm âm lượng hoặc công cụ Chụp màn hình của Samsung.")
             "Ghi màn hình", "Ghi" -> showNotice("Ghi màn hình", "Mở Bảng điều khiển nhanh của Samsung và chọn Ghi màn hình.")
             "Chặn thông báo" -> startActivitySafely(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
-            "Hẹn giờ" -> showNotice("Hẹn giờ", "Tính năng hẹn giờ được đặt trong ứng dụng Nero Game Turbo.")
+            "Hẹn giờ" -> startActivitySafely(
+                Intent(android.provider.AlarmClock.ACTION_SET_TIMER)
+                    .putExtra(android.provider.AlarmClock.EXTRA_LENGTH, 30 * 60)
+                    .putExtra(android.provider.AlarmClock.EXTRA_MESSAGE, "Nero Game Turbo")
+            )
             "Cài đặt" -> startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
     }
