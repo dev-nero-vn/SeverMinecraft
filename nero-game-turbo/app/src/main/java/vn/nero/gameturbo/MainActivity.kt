@@ -567,11 +567,19 @@ class MainActivity : Activity() {
     }
 
     private fun showTimerDialog() {
-        val minutes = arrayOf("15 phút", "30 phút", "45 phút", "60 phút", "90 phút")
+        val durations = intArrayOf(15, 30, 45, 60, 90)
+        val labels = arrayOf("15 phút", "30 phút", "45 phút", "60 phút", "90 phút")
         AlertDialog.Builder(this)
             .setTitle("HẸN GIỜ CHƠI GAME")
-            .setItems(minutes) { _, which ->
-                Toast.makeText(this, "Đã chọn nhắc sau ${minutes[which]}. Tính năng nhắc giờ sẽ chạy trên HUD.", Toast.LENGTH_SHORT).show()
+            .setItems(labels) { _, which ->
+                val intent = Intent(android.provider.AlarmClock.ACTION_SET_TIMER)
+                    .putExtra(android.provider.AlarmClock.EXTRA_LENGTH, durations[which] * 60)
+                    .putExtra(android.provider.AlarmClock.EXTRA_MESSAGE, "Nero Game Turbo")
+                try {
+                    startActivity(intent)
+                } catch (_: Exception) {
+                    Toast.makeText(this, "Điện thoại chưa có ứng dụng Đồng hồ hỗ trợ hẹn giờ.", Toast.LENGTH_LONG).show()
+                }
             }
             .setNegativeButton("ĐÓNG", null)
             .show()
@@ -595,8 +603,10 @@ class MainActivity : Activity() {
     }
 
     private fun sendHudRefresh() {
+        if (!prefs.getBoolean("hud_enabled", false)) return
         try {
-            sendBroadcast(Intent(HudOverlayService.ACTION_REFRESH).setPackage(packageName))
+            val intent = Intent(this, HudOverlayService::class.java).setAction(HudOverlayService.ACTION_REFRESH)
+            if (Build.VERSION.SDK_INT >= 26) startForegroundService(intent) else startService(intent)
         } catch (_: Exception) { }
     }
 
