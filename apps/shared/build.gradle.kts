@@ -10,8 +10,8 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+    kotlinOptions { jvmTarget = "17" }
 }
-kotlinOptions { jvmTarget = "17" }
 dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("io.github.webrtc-sdk:android:150.7871.04")
