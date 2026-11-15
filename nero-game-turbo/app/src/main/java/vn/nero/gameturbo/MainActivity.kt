@@ -49,7 +49,6 @@ class MainActivity : Activity() {
                 !hasUsageAccess() -> {
                     if (permissionStep == 1) {
                         permissionStep = 2
-                        returningFromPermissionSettings = false
                         requestUsagePermission()
                     } else if (returningFromPermissionSettings) {
                         disableHud("Chưa cấp quyền nhận diện trò chơi.")
