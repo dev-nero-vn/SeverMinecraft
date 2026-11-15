@@ -343,7 +343,7 @@ class HudOverlayService : Service() {
         statRow.addView(statTile("CPU", cpuText), LinearLayout.LayoutParams(0, dp(58), 1f))
         statRow.addView(statTile("FPS", "—"), LinearLayout.LayoutParams(0, dp(58), 1f).apply { leftMargin = dp(5) })
         statRow.addView(statTile("RAM", ramText), LinearLayout.LayoutParams(0, dp(58), 1f).apply { leftMargin = dp(5) })
-        statRow.addView(statTile("MÀN HÌNH", hzText), LinearLayout.LayoutParams(0, dp(58), 1f).apply { leftMargin = dp(5) })
+        statRow.addView(statTile("GPU", "—"), LinearLayout.LayoutParams(0, dp(58), 1f).apply { leftMargin = dp(5) })
         body.addView(statRow, LinearLayout.LayoutParams(-1, dp(58)).apply { topMargin = dp(5) })
 
         val modeRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
@@ -433,7 +433,7 @@ class HudOverlayService : Service() {
             background = rounded(0xFF171D2C.toInt(), 12)
             addView(text(title, 9f, 0xFFB96BFF.toInt(), true))
             addView(text(value, 17f, Color.WHITE, true))
-            addView(text(if (title == "FPS") "Cần quyền hệ thống" else "Theo dõi", 7f, 0xFF8D9AB0.toInt(), false))
+            addView(text(when (title) { "FPS", "GPU" -> "Cần quyền hệ thống"; else -> "Theo dõi" }, 7f, 0xFF8D9AB0.toInt(), false))
         }
 
     private fun actionChip(name: String, selected: Boolean, action: () -> Unit): View =
@@ -538,7 +538,7 @@ class HudOverlayService : Service() {
         val launchIntent = Intent(this, MainActivity::class.java)
         val pending = PendingIntent.getActivity(
             this, 0, launchIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or if (Build.VERSION.SDK_INT >= 23) PendingIntent.FLAG_IMMUTABLE else 0
+            PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= 23) PendingIntent.FLAG_IMMUTABLE else 0)
         )
         return if (Build.VERSION.SDK_INT >= 26) {
             Notification.Builder(this, CHANNEL_ID)
@@ -565,9 +565,8 @@ class HudOverlayService : Service() {
         manager.notify(NOTIFICATION_ID, buildNotification(text))
     }
 
-    private fun overlayType(): Int =
-        if (Build.VERSION.SDK_INT >= 26) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-        else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE
+    @Suppress("DEPRECATION")
+    private fun overlayType(): Int = if (Build.VERSION.SDK_INT >= 26) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else WindowManager.LayoutParams.TYPE_PHONE
 
     private fun text(value: String, size: Float, color: Int, bold: Boolean): TextView =
         TextView(this).apply {
