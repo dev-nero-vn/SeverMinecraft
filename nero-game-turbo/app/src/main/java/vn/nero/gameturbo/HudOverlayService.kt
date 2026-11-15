@@ -298,12 +298,35 @@ class HudOverlayService : Service() {
                 background = ripple(0x00000000, 10)
                 isClickable = true
                 isFocusable = true
-                setOnClickListener { launchApp(app.activityInfo.packageName, false) }
-                setOnLongClickListener {
-                    launchApp(app.activityInfo.packageName, true)
-                    true
+                var downX = 0f
+                var downY = 0f
+                var dragged = false
+                setOnTouchListener { _, event ->
+                    when (event.actionMasked) {
+                        MotionEvent.ACTION_DOWN -> {
+                            downX = event.rawX
+                            downY = event.rawY
+                            dragged = false
+                            true
+                        }
+                        MotionEvent.ACTION_MOVE -> {
+                            if (!dragged && event.rawX - downX > dp(22)) {
+                                dragged = true
+                                launchApp(app.activityInfo.packageName, true)
+                            }
+                            true
+                        }
+                        MotionEvent.ACTION_UP -> {
+                            if (!dragged && kotlin.math.abs(event.rawX - downX) < dp(12) && kotlin.math.abs(event.rawY - downY) < dp(12)) {
+                                launchApp(app.activityInfo.packageName, false)
+                            }
+                            true
+                        }
+                        MotionEvent.ACTION_CANCEL -> true
+                        else -> true
+                    }
                 }
-                contentDescription = app.loadLabel(packageManager).toString() + ". Giữ để yêu cầu mở cửa sổ nổi."
+                contentDescription = app.loadLabel(packageManager).toString() + ". Vuốt kéo sang phải để mở cửa sổ nổi."
             }
             val icon = ImageView(this).apply {
                 setImageDrawable(app.loadIcon(packageManager))
@@ -426,15 +449,19 @@ class HudOverlayService : Service() {
         // The next panel opening uses the latest values; avoid replacing views during touch handling.
     }
 
-    private fun statTile(title: String, value: String): View =
-        LinearLayout(this).apply {
+    private fun statTile(title: String, value: String): View {
+        val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             background = rounded(0xFF171D2C.toInt(), 12)
             addView(text(title, 9f, 0xFFB96BFF.toInt(), true))
-            addView(text(value, 17f, Color.WHITE, true))
-            addView(text(when (title) { "FPS", "GPU" -> "Cần quyền hệ thống"; else -> "Theo dõi" }, 7f, 0xFF8D9AB0.toInt(), false))
         }
+        val valueView = text(value, 17f, Color.WHITE, true)
+        card.addView(valueView)
+        panelMetricValues.add(valueView)
+        card.addView(text(when (title) { "FPS", "GPU" -> "Cần quyền hệ thống"; else -> "Theo dõi" }, 7f, 0xFF8D9AB0.toInt(), false))
+        return card
+    }
 
     private fun actionChip(name: String, selected: Boolean, action: () -> Unit): View =
         text(name, 9f, Color.WHITE, true).apply {
