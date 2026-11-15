@@ -45,6 +45,8 @@ class HudOverlayService : Service() {
         const val KEY_HANDLE_WIDTH = "handle_width"
         const val KEY_HANDLE_ALPHA = "handle_alpha"
         const val KEY_GAME_MODE = "game_mode"
+        const val KEY_HUD_ENABLED = "hud_enabled"
+        const val KEY_TOUCH_LOCK = "touch_lock"
         const val ACTION_START = "vn.nero.gameturbo.START"
         const val ACTION_REFRESH = "vn.nero.gameturbo.REFRESH"
         private const val CHANNEL_ID = "nero_game_turbo_hud"
@@ -67,16 +69,31 @@ class HudOverlayService : Service() {
 
     private val monitor = object : Runnable {
         override fun run() {
+            if (!prefs.getBoolean(KEY_HUD_ENABLED, false)) {
+                stopSelf()
+                return
+            }
+
             detectForegroundGame()
-            val stats = DeviceStats.read(this@HudOverlayService)
-            cpuText = stats.cpuText
-            ramText = stats.ramText
-            hzText = stats.refreshText
-            if (panelOpen) refreshPanelStats()
-            val delay = when (prefs.getString(KEY_GAME_MODE, "balanced")) {
-                "performance" -> 700L
-                "battery" -> 3000L
-                else -> 1400L
+
+            // Khi không có game: chỉ kiểm tra trạng thái thưa, không đọc CPU/RAM liên tục.
+            // Khi game chạy nhưng HUD đóng: chỉ nhận diện game, không lấy mẫu thống kê.
+            val delay = when {
+                currentGamePackage == null -> 6000L
+                !panelOpen -> 1800L
+                else -> when (prefs.getString(KEY_GAME_MODE, "balanced")) {
+                    "performance" -> 700L
+                    "battery" -> 3000L
+                    else -> 1400L
+                }
+            }
+
+            if (currentGamePackage != null && panelOpen) {
+                val stats = DeviceStats.read(this@HudOverlayService)
+                cpuText = stats.cpuText
+                ramText = stats.ramText
+                hzText = stats.refreshText
+                refreshPanelStats()
             }
             handler.postDelayed(this, delay)
         }
@@ -90,6 +107,10 @@ class HudOverlayService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (!prefs.getBoolean(KEY_HUD_ENABLED, false)) {
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
         when (intent?.action) {
             ACTION_REFRESH -> {
                 closePanel()
@@ -126,7 +147,7 @@ class HudOverlayService : Service() {
         val now = System.currentTimeMillis()
         val events = try {
             (getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager)
-                .queryEvents(now - 12_000L, now)
+                .queryEvents(now - 15_000L, now)
         } catch (_: Exception) {
             null
         }
@@ -141,18 +162,21 @@ class HudOverlayService : Service() {
                     @Suppress("DEPRECATION")
                     event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND
                 }
-                if (resumed && !event.packageName.isNullOrBlank() && !isIgnoredPackage(event.packageName)) {
+                // Giữ cả launcher/System UI như sự kiện rời game để HUD được ẩn đúng lúc.
+                if (resumed && !event.packageName.isNullOrBlank()) {
                     latestPackage = event.packageName
                 }
             }
         }
 
         if (latestPackage == null) {
+            // Game vẫn đang foreground nhưng không có event mới: giữ trạng thái hiện tại.
+            if (currentGamePackage != null) return
             latestPackage = try {
                 (getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager)
-                    .queryUsageStats(UsageStatsManager.INTERVAL_DAILY, now - 90_000L, now)
+                    .queryUsageStats(UsageStatsManager.INTERVAL_DAILY, now - 10_000L, now)
                     .asSequence()
-                    .filter { !isIgnoredPackage(it.packageName) }
+                    .filter { it.packageName != packageName && it.lastTimeUsed >= now - 9_000L }
                     .maxByOrNull { it.lastTimeUsed }
                     ?.packageName
             } catch (_: Exception) { null }
@@ -291,7 +315,11 @@ class HudOverlayService : Service() {
             closePanel()
             return
         }
-        if (currentGamePackage == null) return
+        if (!prefs.getBoolean(KEY_HUD_ENABLED, false) || currentGamePackage == null) return
+        val latestStats = DeviceStats.read(this)
+        cpuText = latestStats.cpuText
+        ramText = latestStats.ramText
+        hzText = latestStats.refreshText
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             background = rounded(0xF20A0E1A.toInt(), 22)
