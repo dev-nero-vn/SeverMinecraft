@@ -532,7 +532,8 @@ class HudOverlayService : Service() {
         panelView?.let { try { windowManager.removeView(it) } catch (_: Exception) { } }
         panelView = null
         panelOpen = false
-        panelMetricValues.clear()
+        panelMetricViews.clear()
+        modeChipViews.clear()
     }
 
     private fun refreshPanelStats() {
