@@ -431,8 +431,9 @@ class HudOverlayService : Service() {
 
         val screenWidth = resources.displayMetrics.widthPixels
         val screenHeight = resources.displayMetrics.heightPixels
-        val width = (screenWidth * 0.88f).toInt().coerceAtLeast(dp(300)).coerceAtMost(screenWidth - dp(12))
-        val height = (screenHeight * 0.78f).toInt().coerceAtLeast(dp(300)).coerceAtMost(screenHeight - dp(40))
+        // Compact game-side panel: match the reference layout (about 45% width, nearly full height).
+        val width = (screenWidth * 0.46f).toInt().coerceAtLeast(dp(320)).coerceAtMost(screenWidth - dp(12))
+        val height = (screenHeight * 0.94f).toInt().coerceAtLeast(dp(270)).coerceAtMost(screenHeight - dp(16))
         val params = WindowManager.LayoutParams(
             width, height, overlayType(),
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -442,7 +443,7 @@ class HudOverlayService : Service() {
         ).apply {
             gravity = Gravity.TOP or Gravity.LEFT
             x = dp(8)
-            y = dp(34)
+            y = dp(8)
         }
         try {
             windowManager.addView(root, params)
