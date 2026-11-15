@@ -51,6 +51,9 @@ jobs:
           test -f nero-game-turbo/app/src/main/java/vn/nero/gameturbo/MainActivity.kt
           test -f nero-game-turbo/app/src/main/java/vn/nero/gameturbo/HudOverlayService.kt
           test -f nero-game-turbo/app/src/main/java/vn/nero/gameturbo/DeviceStats.kt
+          test -f nero-game-turbo/app/src/main/res/drawable/nero_logo_mark.xml
+          test -f nero-game-turbo/app/src/main/res/drawable/nero_logo_animated.xml
+          test -f nero-game-turbo/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
 
       - name: Build APK debug
         run: gradle --no-daemon -p nero-game-turbo :app:assembleDebug
@@ -83,10 +86,15 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/game-hud'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: nero-game-turbo-1.3.0
-          name: Nero Game Turbo 1.3.0 - APK ZIP
+          tag_name: nero-game-turbo-1.4.0
+          name: Nero Game Turbo 1.4.0 - APK ZIP
           body: |
-            Bản thử nghiệm giao diện Game Turbo tiếng Việt cho điện thoại Galaxy.
+            Bản nâng cấp Nero Game Turbo tiếng Việt, lấy cảm hứng từ các video Game Space / Game Turbo tham chiếu.
+            - Logo ứng dụng Nero tự thiết kế và hiệu ứng mở đầu động.
+            - Màn hình dọc tối giản chỉ có nút BẬT/TẮT HUD.
+            - HUD gọn hơn, có cuộn dọc, danh sách ứng dụng đầy đủ và trình lọc ứng dụng.
+            - Quản lý game và tùy chỉnh màu, chiều dài, độ dày, độ đậm tay nắm.
+            - Bảng công cụ dạng biểu tượng, có hoạt ảnh mở.
             - Mở giao diện chính ở chế độ ngang (Landscape).
             - Tay nắm dọc cố định ở mép trái khi nhận diện game đã chọn.
             - Dải logo ứng dụng và bảng công cụ HUD.
