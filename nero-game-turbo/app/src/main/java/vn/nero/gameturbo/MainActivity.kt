@@ -7,6 +7,7 @@ import android.app.AppOpsManager
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
@@ -182,12 +183,12 @@ class MainActivity : Activity() {
         content.addView(header, LinearLayout.LayoutParams(-1, dp(48)))
 
         val stats = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        val cpuCard = statCard("CPU", "Đang đo", "Mức sử dụng", 0xFFB85CFF)
+        val cpuCard = statCard("CPU", "Đang đo", "Mức sử dụng", 0xFFB85CFF.toInt())
         cpuValue = cpuCard.second
-        val fpsCard = statCard("FPS", "—", "Không có quyền đọc FPS hệ thống", 0xFFB85CFF)
-        val ramCard = statCard("RAM", "—", "Bộ nhớ đã dùng", 0xFF4EBBFF)
+        val fpsCard = statCard("FPS", "—", "Không có quyền đọc FPS hệ thống", 0xFFB85CFF.toInt())
+        val ramCard = statCard("RAM", "—", "Bộ nhớ đã dùng", 0xFF4EBBFF.toInt())
         ramValue = ramCard.second
-        val gpuCard = statCard("GPU", "—", "Cần quyền hệ thống Samsung", 0xFF4EBBFF)
+        val gpuCard = statCard("GPU", "—", "Cần quyền hệ thống Samsung", 0xFF4EBBFF.toInt())
         listOf(cpuCard.first, fpsCard.first, ramCard.first, gpuCard.first).forEachIndexed { index, card ->
             stats.addView(card, LinearLayout.LayoutParams(0, dp(78), 1f).apply {
                 if (index > 0) leftMargin = dp(8)
