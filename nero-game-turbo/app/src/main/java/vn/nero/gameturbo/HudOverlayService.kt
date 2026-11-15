@@ -39,6 +39,7 @@ class HudOverlayService : Service() {
     companion object {
         const val PREFS = "nero_game_turbo_settings"
         const val KEY_GAMES = "selected_games"
+        const val KEY_SHORTCUTS = "selected_shortcut_apps"
         const val KEY_HANDLE_COLOR = "handle_color"
         const val KEY_HANDLE_LENGTH = "handle_length"
         const val KEY_HANDLE_WIDTH = "handle_width"
@@ -302,12 +303,20 @@ class HudOverlayService : Service() {
             scaleType = ImageView.ScaleType.FIT_CENTER
         }
         rail.addView(gameIcon, LinearLayout.LayoutParams(dp(38), dp(38)).apply { bottomMargin = dp(7) })
-        val appScroll = ScrollView(this)
+        val allLauncherApps = launcherApps()
+        val savedShortcuts = prefs.getStringSet(KEY_SHORTCUTS, emptySet()) ?: emptySet()
+        val visibleApps = if (savedShortcuts.isEmpty()) allLauncherApps.take(14)
+            else allLauncherApps.filter { savedShortcuts.contains(it.activityInfo.packageName) }
+
+        val appScroll = ScrollView(this).apply {
+            isVerticalScrollBarEnabled = false
+            overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
+        }
         val appList = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
         }
-        launcherApps().take(14).forEach { app ->
+        visibleApps.forEach { app ->
             val tile = FrameLayout(this).apply {
                 background = ripple(0x00000000, 10)
                 isClickable = true
@@ -351,6 +360,20 @@ class HudOverlayService : Service() {
         }
         appScroll.addView(appList)
         rail.addView(appScroll, LinearLayout.LayoutParams(dp(44), 0, 1f))
+
+        val addApp = text("+", 25f, Color.WHITE, true).apply {
+            gravity = Gravity.CENTER
+            background = ripple(0xFF263044.toInt(), 11)
+            contentDescription = "Thêm ứng dụng vào dải Game Turbo"
+            setOnClickListener { showShortcutPicker() }
+        }
+        rail.addView(addApp, LinearLayout.LayoutParams(dp(40), dp(38)).apply { topMargin = dp(5) })
+        val editApps = text("✎", 18f, 0xFFDDE5F3.toInt(), true).apply {
+            gravity = Gravity.CENTER
+            contentDescription = "Chỉnh sửa ứng dụng trong dải Game Turbo"
+            setOnClickListener { showShortcutPicker() }
+        }
+        rail.addView(editApps, LinearLayout.LayoutParams(dp(40), dp(34)))
         root.addView(rail, LinearLayout.LayoutParams(dp(52), -1))
 
         val body = LinearLayout(this).apply {
@@ -562,6 +585,42 @@ class HudOverlayService : Service() {
             }
         } catch (_: Exception) {
             Toast.makeText(this, "Không mở được ứng dụng.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun showShortcutPicker() {
+        val apps = launcherApps()
+        val current = (prefs.getStringSet(KEY_SHORTCUTS, emptySet()) ?: emptySet()).toMutableSet()
+        if (current.isEmpty()) {
+            apps.take(14).forEach { current.add(it.activityInfo.packageName) }
+        }
+        val labels = apps.map { it.loadLabel(packageManager).toString() }.toTypedArray()
+        val checked = BooleanArray(apps.size) { current.contains(apps[it].activityInfo.packageName) }
+        val dialog = android.app.AlertDialog.Builder(this)
+            .setTitle("THÊM / CHỈNH SỬA ỨNG DỤNG")
+            .setMultiChoiceItems(labels, checked) { _, which, isChecked ->
+                val pkg = apps[which].activityInfo.packageName
+                if (isChecked) current.add(pkg) else current.remove(pkg)
+            }
+            .setPositiveButton("LƯU") { _, _ ->
+                prefs.edit().putStringSet(KEY_SHORTCUTS, current.toSet()).apply()
+                closePanel()
+                openPanel()
+            }
+            .setNeutralButton("HIỆN TẤT CẢ") { _, _ ->
+                prefs.edit().remove(KEY_SHORTCUTS).apply()
+                closePanel()
+                openPanel()
+            }
+            .setNegativeButton("HỦY", null)
+            .create()
+        try {
+            if (Build.VERSION.SDK_INT >= 26) {
+                dialog.window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+            }
+            dialog.show()
+        } catch (_: Exception) {
+            Toast.makeText(this, "Không mở được danh sách ứng dụng.", Toast.LENGTH_SHORT).show()
         }
     }
 
