@@ -142,7 +142,7 @@ class MainActivity : Activity() {
             setHintTextColor(0xFF71809C.toInt())
             setTextColor(Color.WHITE)
             textSize = 12f
-            singleLine = true
+            setSingleLine(true)
             setPadding(dp(12), 0, dp(12), 0)
             background = rounded(0xFF151E2E.toInt(), 11)
             addTextChangedListener(object : android.text.TextWatcher {
