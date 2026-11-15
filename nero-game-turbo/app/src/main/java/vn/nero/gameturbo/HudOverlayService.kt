@@ -637,7 +637,18 @@ class HudOverlayService : Service() {
     private fun actionChip(name: String, mode: String, action: () -> Unit): TextView =
         text(name, 9f, Color.WHITE, true).apply {
             gravity = Gravity.CENTER
-            background = rounded(0xFF252C3B.toInt(), 11)
+            background = ripple(0xFF252C3B.toInt(), 11)
+            setOnTouchListener { view, event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        view.animate().scaleX(0.95f).scaleY(0.95f).setDuration(70).start()
+                        view.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
+                        view.animate().scaleX(1f).scaleY(1f).setDuration(110).start()
+                }
+                false
+            }
             setOnClickListener { action() }
             post { updateModeChipStyles() }
         }
