@@ -468,15 +468,14 @@ class HudOverlayService : Service() {
         val cpuGauge = CircularStatView(this, "CPU", cpuText, percentFrom(cpuText), 0xFFB45CFF.toInt())
         val fpsGauge = CircularStatView(this, "FPS", "—", null, 0xFF42D7F5.toInt())
         val ramGauge = CircularStatView(this, "RAM", ramText, percentFrom(ramText), 0xFF48D6A0.toInt())
-        val gpuGauge = CircularStatView(this, "GPU", "—", null, 0xFFFFB85C.toInt())
-        listOf(cpuGauge, fpsGauge, ramGauge, gpuGauge).forEachIndexed { index, gauge ->
+        listOf(cpuGauge, fpsGauge, ramGauge).forEachIndexed { index, gauge ->
             panelMetricViews.add(gauge)
-            statRow.addView(gauge, LinearLayout.LayoutParams(0, dp(82), 1f).apply {
-                if (index > 0) leftMargin = dp(2)
+            statRow.addView(gauge, LinearLayout.LayoutParams(0, dp(84), 1f).apply {
+                if (index > 0) leftMargin = dp(5)
             })
         }
-        rightContent.addView(statRow, LinearLayout.LayoutParams(-1, dp(84)).apply { topMargin = dp(5) })
-        rightContent.addView(text("FPS/GPU chỉ hiện số khi Android hoặc Samsung cấp dữ liệu đo thực.", 7f, 0xFF8290AA.toInt(), false),
+        rightContent.addView(statRow, LinearLayout.LayoutParams(-1, dp(86)).apply { topMargin = dp(5) })
+        rightContent.addView(text("CPU/RAM cập nhật theo mẫu đo. FPS thật cần quyền đo khung hình từ hệ thống.", 7f, 0xFF8290AA.toInt(), false),
             LinearLayout.LayoutParams(-1, dp(16)))
 
         val modeRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
@@ -580,12 +579,11 @@ class HudOverlayService : Service() {
     }
 
     private fun refreshPanelStats() {
-        if (panelMetricViews.size >= 4) {
+        if (panelMetricViews.size >= 3) {
             panelMetricViews[0].update(cpuText, percentFrom(cpuText))
-            // Android không cung cấp FPS của ứng dụng khác cho ứng dụng thường.
+            // FPS game khác không có API công khai dùng được ở ứng dụng thường.
             panelMetricViews[1].update("—", null)
             panelMetricViews[2].update(ramText, percentFrom(ramText))
-            panelMetricViews[3].update("—", null)
         }
     }
 
@@ -596,13 +594,29 @@ class HudOverlayService : Service() {
         prefs.edit().putString(KEY_GAME_MODE, mode).apply()
         updateModeChipStyles()
         val message = when (mode) {
-            "performance" -> "Đã chọn Hiệu năng: HUD cập nhật nhanh hơn (700 ms)."
-            "battery" -> "Đã chọn Tiết kiệm pin: HUD giảm tần suất cập nhật (3 giây)."
-            else -> "Đã chọn Cân bằng: HUD cập nhật ở mức tiêu chuẩn (1,4 giây)."
+            "performance" -> "Đã chọn nhịp Hiệu năng: vòng đo HUD cập nhật nhanh hơn. Tối ưu CPU/GPU hệ thống vẫn do One UI quản lý."
+            "battery" -> "Đã chọn Tiết kiệm pin: HUD giảm tần suất cập nhật để hạn chế hoạt động nền."
+            else -> "Đã chọn Cân bằng: HUD dùng nhịp cập nhật tiêu chuẩn."
         }
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
         handler.removeCallbacks(monitor)
         handler.post(monitor)
+        if (mode == "battery") {
+            showHudDialog(
+                "TIẾT KIỆM PIN CỦA ĐIỆN THOẠI",
+                "Nero đã giảm tần suất lấy mẫu HUD. Muốn bật Chế độ tiết kiệm pin thật của Android, mở phần cài đặt pin.",
+                "MỞ CÀI ĐẶT PIN"
+            ) { startActivitySafely(Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS)) }
+        } else if (mode == "performance") {
+            val power = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+            if (Build.VERSION.SDK_INT >= 21 && power.isPowerSaveMode) {
+                showHudDialog(
+                    "CHẾ ĐỘ HIỆU NĂNG",
+                    "Điện thoại đang bật tiết kiệm pin. Mở cài đặt pin để tắt nếu bạn muốn hệ thống ưu tiên hiệu năng.",
+                    "MỞ CÀI ĐẶT PIN"
+                ) { startActivitySafely(Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS)) }
+            }
+        }
     }
 
     private fun updateModeChipStyles() {
