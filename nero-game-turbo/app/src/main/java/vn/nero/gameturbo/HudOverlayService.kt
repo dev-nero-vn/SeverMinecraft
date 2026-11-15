@@ -305,7 +305,8 @@ class HudOverlayService : Service() {
         rail.addView(gameIcon, LinearLayout.LayoutParams(dp(38), dp(38)).apply { bottomMargin = dp(7) })
         val allLauncherApps = launcherApps()
         val savedShortcuts = prefs.getStringSet(KEY_SHORTCUTS, emptySet()) ?: emptySet()
-        val visibleApps = if (savedShortcuts.isEmpty()) allLauncherApps.take(14)
+        // Mặc định hiển thị toàn bộ ứng dụng đã cài; người dùng có thể lọc bằng nút dấu cộng.
+        val visibleApps = if (savedShortcuts.isEmpty()) allLauncherApps
             else allLauncherApps.filter { savedShortcuts.contains(it.activityInfo.packageName) }
 
         val appScroll = ScrollView(this).apply {
@@ -428,13 +429,13 @@ class HudOverlayService : Service() {
             setPadding(0, dp(7), 0, dp(4))
         }
         val toolRows = listOf(
-            listOf("Chế độ game", "Theo dõi hệ thống"),
-            listOf("Menu ứng dụng", "Tăng cường cảm ứng"),
-            listOf("Bảo vệ cảm ứng", "Chụp màn hình"),
-            listOf("Ghi màn hình", "Chặn thông báo"),
-            listOf("Đổi giọng nói", "Hẹn giờ"),
+            listOf("Quản lý game", "Theo dõi hệ thống"),
+            listOf("Tùy chỉnh HUD", "Menu ứng dụng"),
+            listOf("Tăng cường cảm ứng", "Bảo vệ cảm ứng"),
+            listOf("Chụp màn hình", "Ghi màn hình"),
+            listOf("Chặn thông báo", "Hẹn giờ"),
             listOf("Âm thanh", "Độ sáng"),
-            listOf("Cài đặt Android", "Chế độ im lặng"),
+            listOf("Cửa sổ nổi", "Cài đặt Android"),
         )
         toolRows.forEach { row ->
             val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
@@ -470,8 +471,10 @@ class HudOverlayService : Service() {
         val screenWidth = resources.displayMetrics.widthPixels
         val screenHeight = resources.displayMetrics.heightPixels
         // Compact game-side panel: match the reference layout (about 45% width, nearly full height).
-        val width = (screenWidth * 0.46f).toInt().coerceAtLeast(dp(320)).coerceAtMost(screenWidth - dp(12))
-        val height = (screenHeight * 0.94f).toInt().coerceAtLeast(dp(270)).coerceAtMost(screenHeight - dp(16))
+        // Bảng được giới hạn kích thước để không che quá nhiều phần game.
+        // Nội dung bên trong cuộn độc lập theo chiều dọc.
+        val width = dp(360).coerceAtMost(screenWidth - dp(20)).coerceAtLeast(dp(280))
+        val height = (screenHeight * 0.82f).toInt().coerceAtLeast(dp(300)).coerceAtMost(screenHeight - dp(24))
         val params = WindowManager.LayoutParams(
             width, height, overlayType(),
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -481,12 +484,15 @@ class HudOverlayService : Service() {
         ).apply {
             gravity = Gravity.TOP or Gravity.LEFT
             x = dp(8)
-            y = dp(8)
+            y = ((screenHeight - height) / 2).coerceAtLeast(dp(8))
         }
         try {
             windowManager.addView(root, params)
             panelView = root
             panelOpen = true
+            root.alpha = 0f
+            root.translationX = -dp(14).toFloat()
+            root.animate().alpha(1f).translationX(0f).setDuration(230).start()
         } catch (_: Exception) {
             panelOpen = false
             Toast.makeText(this, "Không thể mở bảng HUD. Hãy kiểm tra quyền hiển thị trên ứng dụng khác.", Toast.LENGTH_LONG).show()
@@ -530,18 +536,54 @@ class HudOverlayService : Service() {
             setOnClickListener { action() }
         }
 
-    private fun toolButton(name: String, action: () -> Unit): View =
-        text(name, 10f, 0xFFE7ECF6.toInt(), true).apply {
+    private fun toolButton(name: String, action: () -> Unit): View {
+        val glyph = when (name) {
+            "Quản lý game" -> "▣"
+            "Theo dõi hệ thống" -> "◉"
+            "Tùy chỉnh HUD" -> "⚙"
+            "Menu ứng dụng" -> "▦"
+            "Tăng cường cảm ứng" -> "✥"
+            "Bảo vệ cảm ứng" -> "⛨"
+            "Chụp màn hình" -> "▧"
+            "Ghi màn hình" -> "●"
+            "Chặn thông báo" -> "◌"
+            "Hẹn giờ" -> "◷"
+            "Âm thanh" -> "♫"
+            "Độ sáng" -> "☼"
+            "Cửa sổ nổi" -> "▣"
+            else -> "⌘"
+        }
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            background = ripple(0xFF252C3B.toInt(), 13)
+            background = ripple(0xFF202A3C.toInt(), 13)
+            setPadding(dp(3), dp(3), dp(3), dp(3))
+            addView(TextView(this@HudOverlayService).apply {
+                text = glyph
+                textSize = 19f
+                gravity = Gravity.CENTER
+                setTextColor(0xFFB98AFF.toInt())
+                typeface = Typeface.DEFAULT_BOLD
+            }, LinearLayout.LayoutParams(-1, dp(22)))
+            addView(TextView(this@HudOverlayService).apply {
+                text = name
+                textSize = 9f
+                gravity = Gravity.CENTER
+                maxLines = 2
+                setTextColor(0xFFE7ECF6.toInt())
+                typeface = Typeface.DEFAULT_BOLD
+            }, LinearLayout.LayoutParams(-1, -2))
             setOnClickListener { action() }
         }
+    }
 
     private fun onToolSelected(name: String) {
         when (name) {
-            "Menu ứng dụng" -> showNotice("Ứng dụng", "Chạm logo để mở ứng dụng. Giữ logo để yêu cầu mở bằng cửa sổ nổi của One UI.")
-            "Theo dõi hệ thống" -> showNotice("Theo dõi hệ thống", "CPU và RAM được đọc từ Android. FPS/GPU thực không được API Android công khai cho ứng dụng thường.")
-            "Chế độ game" -> startActivitySafely(Intent(Settings.ACTION_SETTINGS))
+            "Menu ứng dụng" -> showShortcutPicker()
+            "Quản lý game", "Chế độ game" -> showGamePicker()
+            "Tùy chỉnh HUD" -> showHudSettings()
+            "Cửa sổ nổi" -> showNotice("Cửa sổ nổi", "Vuốt kéo biểu tượng ứng dụng từ dải bên trái sang phải. One UI sẽ quyết định ứng dụng có hỗ trợ cửa sổ nổi hay không.")
+            "Theo dõi hệ thống" -> showNotice("Theo dõi hệ thống", "CPU, RAM, pin và tần số màn hình được đọc từ Android. FPS/GPU của game cần quyền hệ thống nên Nero không hiển thị số giả.")
             "Tăng cường cảm ứng", "Bảo vệ cảm ứng" -> showNotice(name, "Android không cấp cho ứng dụng bên thứ ba quyền điều khiển toàn bộ lớp cảm ứng của game khác.")
             "Chụp màn hình", "Chụp" -> showNotice("Chụp màn hình", "Dùng phím Nguồn + Giảm âm lượng hoặc công cụ Chụp màn hình của Samsung.")
             "Ghi màn hình", "Ghi" -> showNotice("Ghi màn hình", "Mở Bảng điều khiển nhanh của Samsung và chọn Ghi màn hình.")
@@ -556,6 +598,145 @@ class HudOverlayService : Service() {
             "Độ sáng" -> startActivitySafely(Intent(Settings.ACTION_DISPLAY_SETTINGS))
             "Cài đặt Android", "Cài đặt" -> startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             "Chế độ im lặng" -> startActivitySafely(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
+        }
+    }
+
+    private fun showGamePicker() {
+        val apps = launcherApps()
+        val selected = (prefs.getStringSet(KEY_GAMES, emptySet()) ?: emptySet()).toMutableSet()
+        if (selected.isEmpty()) {
+            apps.filter { isSystemGame(it.activityInfo.packageName) }
+                .forEach { selected.add(it.activityInfo.packageName) }
+        }
+        val labels = apps.map { app ->
+            val name = app.loadLabel(packageManager).toString()
+            if (isSystemGame(app.activityInfo.packageName)) "$name  ·  Game" else name
+        }.toTypedArray()
+        val checked = BooleanArray(apps.size) { selected.contains(apps[it].activityInfo.packageName) }
+        val dialog = android.app.AlertDialog.Builder(this)
+            .setTitle("TRÒ CHƠI CỦA TÔI")
+            .setMessage("Chọn game để Nero tự hiện tay nắm khi game đang chạy.")
+            .setMultiChoiceItems(labels, checked) { _, which, isChecked ->
+                val pkg = apps[which].activityInfo.packageName
+                if (isChecked) selected.add(pkg) else selected.remove(pkg)
+            }
+            .setPositiveButton("LƯU GAME") { _, _ ->
+                prefs.edit().putStringSet(KEY_GAMES, selected.toSet()).apply()
+                closePanel()
+                openPanel()
+                Toast.makeText(this, "Đã cập nhật danh sách game", Toast.LENGTH_SHORT).show()
+            }
+            .setNeutralButton("CHỌN GAME HỆ THỐNG") { _, _ ->
+                val systemGames = apps.filter { isSystemGame(it.activityInfo.packageName) }
+                    .map { it.activityInfo.packageName }.toSet()
+                prefs.edit().putStringSet(KEY_GAMES, systemGames).apply()
+                closePanel()
+                openPanel()
+            }
+            .setNegativeButton("HỦY", null)
+            .create()
+        try {
+            if (Build.VERSION.SDK_INT >= 26) dialog.window?.setType(android.view.WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+            dialog.show()
+        } catch (_: Exception) {
+            Toast.makeText(this, "Không mở được danh sách game.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun showHudSettings() {
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(8), dp(18), dp(4))
+        }
+        val currentLength = prefs.getInt(KEY_HANDLE_LENGTH, 54).coerceIn(24, 104)
+        val currentWidth = prefs.getInt(KEY_HANDLE_WIDTH, 3).coerceIn(1, 11)
+        val currentAlpha = prefs.getInt(KEY_HANDLE_ALPHA, 100).coerceIn(10, 100)
+        val lengthValue = TextView(this).apply { setTextColor(Color.WHITE); textSize = 13f; text = "Chiều dài: $currentLength" }
+        val lengthSeek = android.widget.SeekBar(this).apply {
+            max = 80
+            progress = currentLength - 24
+            setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
+                    lengthValue.text = "Chiều dài: ${progress + 24}"
+                }
+                override fun onStartTrackingTouch(seekBar: android.widget.SeekBar?) {}
+                override fun onStopTrackingTouch(seekBar: android.widget.SeekBar?) {}
+            })
+        }
+        val widthValue = TextView(this).apply { setTextColor(Color.WHITE); textSize = 13f; text = "Độ dày: $currentWidth" }
+        val widthSeek = android.widget.SeekBar(this).apply {
+            max = 10
+            progress = currentWidth - 1
+            setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
+                    widthValue.text = "Độ dày: ${progress + 1}"
+                }
+                override fun onStartTrackingTouch(seekBar: android.widget.SeekBar?) {}
+                override fun onStopTrackingTouch(seekBar: android.widget.SeekBar?) {}
+            })
+        }
+        val alphaValue = TextView(this).apply { setTextColor(Color.WHITE); textSize = 13f; text = "Độ đậm: $currentAlpha%" }
+        val alphaSeek = android.widget.SeekBar(this).apply {
+            max = 90
+            progress = currentAlpha - 10
+            setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
+                    alphaValue.text = "Độ đậm: ${progress + 10}%"
+                }
+                override fun onStartTrackingTouch(seekBar: android.widget.SeekBar?) {}
+                override fun onStopTrackingTouch(seekBar: android.widget.SeekBar?) {}
+            })
+        }
+        content.addView(lengthValue); content.addView(lengthSeek)
+        content.addView(widthValue); content.addView(widthSeek)
+        content.addView(alphaValue); content.addView(alphaSeek)
+        content.addView(TextView(this).apply {
+            text = "MÀU TAY NẮM"
+            setTextColor(0xFFBFC8D8.toInt())
+            textSize = 11f
+            setPadding(0, dp(12), 0, dp(8))
+        })
+        var chosenColor = prefs.getInt(KEY_HANDLE_COLOR, Color.WHITE)
+        val colors = listOf(
+            "Trắng" to Color.WHITE,
+            "Tím Nero" to 0xFFB36BFF.toInt(),
+            "Xanh Neon" to 0xFF38DDF8.toInt(),
+            "Đỏ" to 0xFFFF5B75.toInt(),
+            "Vàng" to 0xFFFFD166.toInt()
+        )
+        val colorRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        colors.forEach { (label, color) ->
+            colorRow.addView(TextView(this).apply {
+                text = "●\n$label"
+                gravity = Gravity.CENTER
+                textSize = 10f
+                setTextColor(color)
+                setPadding(dp(3), dp(7), dp(3), dp(7))
+                background = rounded(0xFF202A3C.toInt(), 9)
+                setOnClickListener { chosenColor = color }
+            }, LinearLayout.LayoutParams(0, dp(48), 1f).apply { leftMargin = dp(3); rightMargin = dp(3) })
+        }
+        content.addView(colorRow)
+        val dialog = android.app.AlertDialog.Builder(this)
+            .setTitle("TÙY CHỈNH NERO HUD")
+            .setView(content)
+            .setPositiveButton("ÁP DỤNG") { _, _ ->
+                prefs.edit()
+                    .putInt(KEY_HANDLE_LENGTH, lengthSeek.progress + 24)
+                    .putInt(KEY_HANDLE_WIDTH, widthSeek.progress + 1)
+                    .putInt(KEY_HANDLE_ALPHA, alphaSeek.progress + 10)
+                    .putInt(KEY_HANDLE_COLOR, chosenColor)
+                    .apply()
+                removeGrip()
+                showGrip()
+            }
+            .setNegativeButton("HỦY", null)
+            .create()
+        try {
+            if (Build.VERSION.SDK_INT >= 26) dialog.window?.setType(android.view.WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+            dialog.show()
+        } catch (_: Exception) {
+            Toast.makeText(this, "Không mở được cài đặt HUD.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -597,6 +778,8 @@ class HudOverlayService : Service() {
         if (current.isEmpty()) {
             apps.take(14).forEach { current.add(it.activityInfo.packageName) }
         }
+        // Khi chưa từng lọc, mặc định chọn tất cả để người dùng thấy toàn bộ app.
+        if (current.isEmpty()) apps.forEach { current.add(it.activityInfo.packageName) }
         val labels = apps.map { it.loadLabel(packageManager).toString() }.toTypedArray()
         val checked = BooleanArray(apps.size) { current.contains(apps[it].activityInfo.packageName) }
         val dialog = android.app.AlertDialog.Builder(this)
