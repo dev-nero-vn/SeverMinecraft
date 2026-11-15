@@ -14,8 +14,13 @@ android {
         buildConfigField("String", "SUPABASE_URL", "\"https://geacjfwatxmfzezkholp.supabase.co\"")
         buildConfigField("String", "SUPABASE_KEY", "\"sb_publishable_NrxIoKwjymmt8fRLKUfe0A_f7ma0EA5\"")
     }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
     buildFeatures { buildConfig = true }
 }
+kotlinOptions { jvmTarget = "17" }
 dependencies {
     implementation(project(":shared"))
     implementation("androidx.core:core-ktx:1.17.0")
