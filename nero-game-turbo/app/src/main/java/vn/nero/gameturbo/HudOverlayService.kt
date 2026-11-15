@@ -380,6 +380,16 @@ class HudOverlayService : Service() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(9), dp(3), dp(4), dp(3))
         }
+        val rightScroll = ScrollView(this).apply {
+            isFillViewport = false
+            isVerticalScrollBarEnabled = true
+            scrollBarStyle = View.SCROLLBARS_INSIDE_INSET
+            overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
+            clipToPadding = false
+        }
+        val rightContent = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -397,7 +407,7 @@ class HudOverlayService : Service() {
             setOnClickListener { closePanel() }
         }
         header.addView(close, LinearLayout.LayoutParams(dp(32), dp(32)))
-        body.addView(header, LinearLayout.LayoutParams(-1, dp(38)))
+        rightContent.addView(header, LinearLayout.LayoutParams(-1, dp(38)))
 
         panelMetricValues.clear()
         val statRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
@@ -405,13 +415,13 @@ class HudOverlayService : Service() {
         statRow.addView(statTile("FPS", "—"), LinearLayout.LayoutParams(0, dp(58), 1f).apply { leftMargin = dp(5) })
         statRow.addView(statTile("RAM", ramText), LinearLayout.LayoutParams(0, dp(58), 1f).apply { leftMargin = dp(5) })
         statRow.addView(statTile("GPU", "—"), LinearLayout.LayoutParams(0, dp(58), 1f).apply { leftMargin = dp(5) })
-        body.addView(statRow, LinearLayout.LayoutParams(-1, dp(58)).apply { topMargin = dp(5) })
+        rightContent.addView(statRow, LinearLayout.LayoutParams(-1, dp(58)).apply { topMargin = dp(5) })
 
         val modeRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         modeRow.addView(actionChip("Hiệu năng", true) { showNotice("Chế độ hiệu năng", "Ứng dụng thường không thể tự ép xung CPU/GPU hoặc thay đổi Game Optimizing Service của Samsung.") }, LinearLayout.LayoutParams(0, dp(34), 1f))
         modeRow.addView(actionChip("Cân bằng", false) { showNotice("Cân bằng", "Đây là tùy chọn giao diện; chế độ hiệu năng hệ thống do Samsung quản lý.") }, LinearLayout.LayoutParams(0, dp(34), 1f).apply { leftMargin = dp(6) })
         modeRow.addView(actionChip("Tiết kiệm pin", false) { startActivitySafely(Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS)) }, LinearLayout.LayoutParams(0, dp(34), 1f).apply { leftMargin = dp(6) })
-        body.addView(modeRow, LinearLayout.LayoutParams(-1, dp(34)).apply { topMargin = dp(6) })
+        rightContent.addView(modeRow, LinearLayout.LayoutParams(-1, dp(34)).apply { topMargin = dp(6) })
 
         val tools = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -437,16 +447,7 @@ class HudOverlayService : Service() {
             }
             tools.addView(line, LinearLayout.LayoutParams(-1, dp(41)).apply { bottomMargin = dp(6) })
         }
-        // Vùng công cụ bên phải phải cuộn dọc độc lập với dải ứng dụng bên trái.
-        val toolsScroll = ScrollView(this).apply {
-            isFillViewport = false
-            isVerticalScrollBarEnabled = true
-            scrollBarStyle = View.SCROLLBARS_INSIDE_INSET
-            overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
-            clipToPadding = false
-        }
-        toolsScroll.addView(tools, ScrollView.LayoutParams(-1, -2))
-        body.addView(toolsScroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        rightContent.addView(tools, LinearLayout.LayoutParams(-1, -2))
 
         val footer = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -461,7 +462,9 @@ class HudOverlayService : Service() {
                 setOnClickListener { onToolSelected(name) }
             }, LinearLayout.LayoutParams(0, dp(32), 1f).apply { leftMargin = dp(3); rightMargin = dp(3) })
         }
-        body.addView(footer, LinearLayout.LayoutParams(-1, dp(38)))
+        rightContent.addView(footer, LinearLayout.LayoutParams(-1, dp(38)).apply { topMargin = dp(6); bottomMargin = dp(6) })
+        rightScroll.addView(rightContent, ScrollView.LayoutParams(-1, -2))
+        body.addView(rightScroll, LinearLayout.LayoutParams(-1, -1))
         root.addView(body, LinearLayout.LayoutParams(0, -1, 1f))
 
         val screenWidth = resources.displayMetrics.widthPixels
@@ -616,7 +619,7 @@ class HudOverlayService : Service() {
             .create()
         try {
             if (Build.VERSION.SDK_INT >= 26) {
-                dialog.window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+                 dialog.window?.setType(android.view.WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
             }
             dialog.show()
         } catch (_: Exception) {
