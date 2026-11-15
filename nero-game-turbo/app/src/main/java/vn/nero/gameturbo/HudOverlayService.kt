@@ -57,6 +57,7 @@ class HudOverlayService : Service() {
     private var currentGamePackage: String? = null
     private var currentGameName = "Đang chờ trò chơi"
     private var panelOpen = false
+    private val panelMetricValues = mutableListOf<TextView>()
     private var cpuText = "—"
     private var ramText = "—"
     private var hzText = "—"
@@ -373,6 +374,7 @@ class HudOverlayService : Service() {
         header.addView(close, LinearLayout.LayoutParams(dp(32), dp(32)))
         body.addView(header, LinearLayout.LayoutParams(-1, dp(38)))
 
+        panelMetricValues.clear()
         val statRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         statRow.addView(statTile("CPU", cpuText), LinearLayout.LayoutParams(0, dp(58), 1f))
         statRow.addView(statTile("FPS", "—"), LinearLayout.LayoutParams(0, dp(58), 1f).apply { leftMargin = dp(5) })
@@ -454,10 +456,16 @@ class HudOverlayService : Service() {
         panelView?.let { try { windowManager.removeView(it) } catch (_: Exception) { } }
         panelView = null
         panelOpen = false
+        panelMetricValues.clear()
     }
 
     private fun refreshPanelStats() {
-        // The next panel opening uses the latest values; avoid replacing views during touch handling.
+        if (panelMetricValues.size >= 4) {
+            panelMetricValues[0].text = cpuText
+            panelMetricValues[1].text = "—"
+            panelMetricValues[2].text = ramText
+            panelMetricValues[3].text = "—"
+        }
     }
 
     private fun statTile(title: String, value: String): View {
@@ -478,7 +486,7 @@ class HudOverlayService : Service() {
         text(name, 9f, Color.WHITE, true).apply {
             gravity = Gravity.CENTER
             background = rounded(if (selected) 0xFF7937BB.toInt() else 0xFF252C3B.toInt(), 18)
-            setOnClickListener(action)
+            setOnClickListener { action() }
         }
 
     private fun toolButton(name: String, action: () -> Unit): View =
