@@ -51,6 +51,7 @@ jobs:
           test -f nero-game-turbo/app/src/main/java/vn/nero/gameturbo/MainActivity.kt
           test -f nero-game-turbo/app/src/main/java/vn/nero/gameturbo/HudOverlayService.kt
           test -f nero-game-turbo/app/src/main/java/vn/nero/gameturbo/DeviceStats.kt
+          test -f nero-game-turbo/app/src/main/java/vn/nero/gameturbo/CircularStatView.kt
           test -f nero-game-turbo/app/src/main/res/drawable/nero_logo_mark.xml
           test -f nero-game-turbo/app/src/main/res/drawable/nero_logo_animated.xml
           test -f nero-game-turbo/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
@@ -86,21 +87,20 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/game-hud'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: nero-game-turbo-1.4.0
-          name: Nero Game Turbo 1.4.0 - APK ZIP
+          tag_name: nero-game-turbo-1.5.0
+          name: Nero Game Turbo 1.5.0 - APK ZIP
           body: |
-            Bản nâng cấp Nero Game Turbo tiếng Việt, lấy cảm hứng từ các video Game Space / Game Turbo tham chiếu.
-            - Logo ứng dụng Nero tự thiết kế và hiệu ứng mở đầu động.
-            - Màn hình dọc tối giản chỉ có nút BẬT/TẮT HUD.
-            - HUD gọn hơn, có cuộn dọc, danh sách ứng dụng đầy đủ và trình lọc ứng dụng.
-            - Quản lý game và tùy chỉnh màu, chiều dài, độ dày, độ đậm tay nắm.
-            - Bảng công cụ dạng biểu tượng, có hoạt ảnh mở.
-            - Mở giao diện chính ở chế độ ngang (Landscape).
-            - Tay nắm dọc cố định ở mép trái khi nhận diện game đã chọn.
-            - Dải logo ứng dụng và bảng công cụ HUD.
-            - Vuốt kéo biểu tượng ứng dụng để yêu cầu mở trong cửa sổ pop-up One UI.
-            - CPU/RAM là số liệu Android đọc được; FPS/GPU phụ thuộc khả năng hệ thống.
-            - APK debug chỉ để thử nghiệm; chưa chứng nhận tương thích trên mọi thiết bị.
+            Nero Game Turbo 1.5.0 - bản HUD tinh chỉnh theo yêu cầu.
+            - Màn hình dọc của ứng dụng chỉ có một nút BẬT/TẮT HUD (sau màn hình logo mở đầu ngắn).
+            - Dịch vụ HUD chỉ khởi chạy khi người dùng bật HUD và đã cấp quyền cần thiết.
+            - Khi chưa vào game, bộ nhận diện kiểm tra thưa mỗi 6 giây; không lấy mẫu CPU/RAM liên tục.
+            - Trong game, tay nắm dọc cố định ở cạnh trái; vuốt sang phải để mở bảng HUD.
+            - CPU và RAM hiển thị vòng tròn, số và tiến trình vòng cập nhật đồng bộ.
+            - Vòng FPS có trạng thái chờ khi không có nguồn đo FPS game được cấp quyền; không tạo số FPS giả.
+            - Ba chế độ đổi màu khi chọn và thay đổi nhịp cập nhật HUD.
+            - Dải ứng dụng có nút thêm, danh sách biểu tượng thật, chọn nhiều app; giữ rồi kéo để yêu cầu cửa sổ tự do.
+            - Các nút HUD có phản hồi nhấn; mục hệ thống mở tác vụ hoặc hướng dẫn theo quyền Android.
+            - APK debug đã xác minh; cửa sổ pop-up và thao tác thật cần kiểm tra trên điện thoại mục tiêu.
           prerelease: true
           make_latest: false
           files: dist/Nero-Game-Turbo.zip
