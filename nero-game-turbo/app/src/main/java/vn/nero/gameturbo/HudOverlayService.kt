@@ -136,7 +136,18 @@ class HudOverlayService : Service() {
             }
         }
 
+        if (latestPackage == null) {
+            latestPackage = try {
+                (getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager)
+                    .queryUsageStats(UsageStatsManager.INTERVAL_DAILY, now - 90_000L, now)
+                    .asSequence()
+                    .filter { !isIgnoredPackage(it.packageName) }
+                    .maxByOrNull { it.lastTimeUsed }
+                    ?.packageName
+            } catch (_: Exception) { null }
+        }
         if (latestPackage == null) return
+
         val gamePackages = prefs.getStringSet(KEY_GAMES, emptySet()) ?: emptySet()
         val isGame = gamePackages.contains(latestPackage) || isSystemGame(latestPackage)
         if (isGame) {
@@ -149,7 +160,7 @@ class HudOverlayService : Service() {
             } else {
                 showGrip()
             }
-        } else {
+        } else if (currentGamePackage != null) {
             currentGamePackage = null
             currentGameName = "Đang chờ trò chơi"
             hideAllHud()
