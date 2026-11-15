@@ -495,7 +495,7 @@ class HudOverlayService : Service() {
         text(name, 10f, 0xFFE7ECF6.toInt(), true).apply {
             gravity = Gravity.CENTER
             background = ripple(0xFF252C3B.toInt(), 13)
-            setOnClickListener(action)
+            setOnClickListener { action() }
         }
 
     private fun onToolSelected(name: String) {
