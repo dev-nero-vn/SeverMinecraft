@@ -23,7 +23,7 @@ class ControllerActivity : AppCompatActivity() {
   super.onCreate(savedInstanceState)
   val root = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(20,20,20,16); setBackgroundColor(0xFF09111F.toInt()) }
   val title = TextView(this).apply { text="NERO REMOTE · CONTROLLER"; textSize=20f; setTextColor(0xFFF4F7FF.toInt()); gravity=Gravity.CENTER_VERTICAL }
-  codeInput = EditText(this).apply { hint="Nhập mã Host (12 ký tự trở lên)"; singleLine=true; setTextColor(-1); setHintTextColor(0xFF93A5BF.toInt()) }
+  codeInput = EditText(this).apply { hint="Nhập mã Host (12 ký tự trở lên)"; isSingleLine=true; setTextColor(-1); setHintTextColor(0xFF93A5BF.toInt()) }
   val connect = Button(this).apply { text="Kết nối"; setOnClickListener { connectToHost() } }
   val resume = Button(this).apply { text="Tiếp tục chia sẻ màn hình"; setOnClickListener { rtc?.sendControl(JSONObject().put("action","resume")); signal?.send("resume") } }
   val navigation = LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }

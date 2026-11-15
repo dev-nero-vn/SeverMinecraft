@@ -26,7 +26,7 @@ class HostActivity:AppCompatActivity(){
   super.onCreate(savedInstanceState)
   val root=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER_HORIZONTAL;setPadding(24,28,24,24);setBackgroundColor(0xFF09111F.toInt())}
   root.addView(TextView(this).apply{text="NERO REMOTE · HOST";textSize=22f;setTextColor(-1)})
-  codeInput=EditText(this).apply{hint="Mã riêng (ít nhất 12 ký tự)";singleLine=true;setTextColor(-1);setHintTextColor(0xFF93A5BF.toInt());setText(prefs.getString("pairing_code",PairingCode.generate()))}
+  codeInput=EditText(this).apply{hint="Mã riêng (ít nhất 12 ký tự)";isSingleLine=true;setTextColor(-1);setHintTextColor(0xFF93A5BF.toInt());setText(prefs.getString("pairing_code",PairingCode.generate()))}
   root.addView(codeInput,LinearLayout.LayoutParams(-1,60))
   root.addView(Button(this).apply{text="Lưu mã riêng";setOnClickListener{val code=PairingCode.normalize(codeInput.text.toString());if(PairingCode.isValid(code)){prefs.edit().putString("pairing_code",code).apply();state.text="Đã lưu mã Host."}else state.text="Mã cần ít nhất 12 ký tự hợp lệ."}})
   root.addView(Button(this).apply{text="Khởi động Host và chia sẻ màn hình";setOnClickListener{val code=PairingCode.normalize(codeInput.text.toString());if(!PairingCode.isValid(code)){state.text="Hãy đặt mã có ít nhất 12 ký tự.";return@setOnClickListener};prefs.edit().putString("pairing_code",code).apply();val manager=getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager;projection.launch(manager.createScreenCaptureIntent())}})
