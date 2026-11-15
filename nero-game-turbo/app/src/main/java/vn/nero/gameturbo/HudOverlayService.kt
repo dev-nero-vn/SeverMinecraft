@@ -174,9 +174,9 @@ class HudOverlayService : Service() {
             if (currentGamePackage != null) return
             latestPackage = try {
                 (getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager)
-                    .queryUsageStats(UsageStatsManager.INTERVAL_DAILY, now - 10_000L, now)
+                    .queryUsageStats(UsageStatsManager.INTERVAL_DAILY, now - 86_400_000L, now)
                     .asSequence()
-                    .filter { it.packageName != packageName && it.lastTimeUsed >= now - 9_000L }
+                    .filter { it.packageName != packageName }
                     .maxByOrNull { it.lastTimeUsed }
                     ?.packageName
             } catch (_: Exception) { null }
