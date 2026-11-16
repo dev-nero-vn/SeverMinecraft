@@ -1,0 +1,61 @@
+name: Nero Windows Virtual - Build APK ZIP
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "nero-windows-virtual/**"
+      - ".github/workflows/nero-windows-virtual.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Build debug APK
+        run: gradle -p nero-windows-virtual/android :app:assembleDebug
+
+      - name: Package APK in ZIP
+        shell: bash
+        run: |
+          mkdir -p release
+          cp nero-windows-virtual/android/app/build/outputs/apk/debug/app-debug.apk release/Nero-Windows-Virtual.apk
+          cd release
+          zip -9 Nero-Windows-Virtual.zip Nero-Windows-Virtual.apk
+          sha256sum Nero-Windows-Virtual.apk Nero-Windows-Virtual.zip > SHA256SUMS.txt
+
+      - name: Upload APK ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nero-Windows-Virtual-APK-ZIP
+          path: release/Nero-Windows-Virtual.zip
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload APK and checksum
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nero-Windows-Virtual-Build-Files
+          path: |
+            release/Nero-Windows-Virtual.apk
+            release/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14
