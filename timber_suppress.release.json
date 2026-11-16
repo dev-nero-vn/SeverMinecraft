@@ -1,0 +1,11 @@
+{
+  "groups": {
+    "OTHERS": {
+      "enabled": true,
+      "description": "General suppression rules not specific to any category",
+      "rules":
+      [
+      ]
+    }
+  }
+}
