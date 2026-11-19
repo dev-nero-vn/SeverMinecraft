@@ -86,8 +86,9 @@ class GameTransferService : Service() {
 
             val finalName = uniqueName(root, safeName(originalName))
             val temporaryName = ".sdmt-" + System.currentTimeMillis() + "-" + finalName.take(70) + ".part"
-            temporary = root.createFile(source.type ?: "application/octet-stream", temporaryName)
+            val tempFile = root.createFile(source.type ?: "application/octet-stream", temporaryName)
                 ?: error("Không tạo được file tạm trên SD")
+            temporary = tempFile
 
             val digest = MessageDigest.getInstance("SHA-256")
             val total = expected.takeIf { it > 0L } ?: source.length().coerceAtLeast(0L)
@@ -95,7 +96,7 @@ class GameTransferService : Service() {
             var lastNotify = 0L
 
             val input = contentResolver.openInputStream(sourceUri) ?: error("Không mở được dữ liệu nguồn")
-            val output = contentResolver.openOutputStream(temporary.uri, "wt") ?: error("Không mở được file đích trên SD")
+            val output = contentResolver.openOutputStream(tempFile.uri, "wt") ?: error("Không mở được file đích trên SD")
             input.use { ins ->
                 output.use { outs ->
                     val buffer = ByteArray(BUFFER_SIZE)
@@ -129,10 +130,10 @@ class GameTransferService : Service() {
 
             verifiedHash = digest.digest().toHex()
             if (cancelled) throw InterruptedException("Đã hủy theo yêu cầu")
-            val rereadHash = hashDocument(temporary.uri)
+            val rereadHash = hashDocument(tempFile.uri)
             require(rereadHash == verifiedHash) { "SHA-256 sau khi ghi không khớp. Bản gốc được giữ nguyên." }
             if (cancelled) throw InterruptedException("Đã hủy theo yêu cầu")
-            require(temporary.renameTo(finalName)) {
+            require(tempFile.renameTo(finalName)) {
                 "Không đổi tên được file tạm. File .part vẫn trên SD; bản gốc được giữ nguyên."
             }
             success = true
