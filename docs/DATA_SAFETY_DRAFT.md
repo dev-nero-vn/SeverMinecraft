@@ -1,12 +1,30 @@
 # Bản khai nháp Google Play Data safety — SD Micro Tool
 
-Tài liệu này là bản rà soát kỹ thuật nội bộ, **không phải biểu mẫu đã nộp**. Cần xác nhận lại sau khi bật bất kỳ dịch vụ đồng bộ hoặc analytics nào.
+Đây là bản rà soát kỹ thuật nội bộ, không phải biểu mẫu đã nộp. Cần đối chiếu đúng phiên bản cuối và thư viện được đóng gói trước khi khai báo trên Play Console.
 
-- Không có quảng cáo hoặc SDK phân tích trong mã nguồn hiện tại.
-- Không yêu cầu vị trí, danh bạ, SMS, lịch sử cuộc gọi hoặc microphone.
-- INTERNET: chỉ dùng để tải URL HTTPS do người dùng nhập và kiểm tra manifest cập nhật.
-- REQUEST_INSTALL_PACKAGES: chỉ dùng để yêu cầu Android mở trình cài đặt cho bản cập nhật của chính ứng dụng; người dùng xác nhận.
-- SAF: người dùng chủ động chọn thư mục SD; app chỉ đọc/ghi trong phạm vi được cấp.
-- APK cập nhật nằm tạm trong cache riêng trước khi mở Package Installer.
+## Xử lý cục bộ
+- URI thư mục SAF, metadata file, danh sách queue, lịch sử và hash được lưu cục bộ trong database riêng của ứng dụng.
+- Usage Access được dùng để truy vấn thống kê dung lượng app/data/cache của package được hiển thị.
+- Metadata cục bộ không được upload lên backend trong phiên bản này.
+- Tệp người dùng chọn được sao chép giữa các URI SAF trên cùng thiết bị; không gửi nội dung file lên cloud.
+- Temporary Cloud Sync chưa bật.
 
-Temporary Cloud Sync chưa được bật. Khi triển khai, phải khai báo chính xác loại dữ liệu đồng bộ, mã hóa khi truyền/lưu, thời hạn, quyền xóa và nhà cung cấp xử lý dữ liệu trong Data safety form.
+## Truyền dữ liệu mạng
+- INTERNET: tải HTTPS do người dùng cung cấp và kiểm tra/tải manifest APK release.
+- Không có quảng cáo hoặc analytics trong mã nguồn app đã rà soát.
+- Không nhúng GitHub token trong APK.
+- Không upload APK, tài nguyên game hoặc dữ liệu game lên GitHub JSON.
+
+## Quyền nhạy cảm / quyền hệ thống
+- PACKAGE_USAGE_STATS: người dùng tự bật trong Cài đặt; dùng đọc thống kê package. Quyền này không cho phép đọc dữ liệu file private.
+- POST_NOTIFICATIONS: thông báo trạng thái theo dõi và tiến trình queue.
+- FOREGROUND_SERVICE / FOREGROUND_SERVICE_DATA_SYNC: duy trì các tác vụ chuyển tệp do người dùng hoặc chế độ tự động đã bật khởi chạy.
+- SAF persistable URI grants: chỉ các thư mục người dùng tự chọn.
+- REQUEST_INSTALL_PACKAGES: trình cài đặt Android cho bản cập nhật của chính ứng dụng; người dùng xác nhận cài đặt.
+
+## Cần xác nhận trước khi nộp
+1. Chốt Data safety theo SDK và các thư viện trong APK/AAB cuối.
+2. Xác định chính xác dữ liệu nào được thu thập/chia sẻ (hiện tại không truyền metadata tracking ra ngoài thiết bị).
+3. Host chính sách quyền riêng tư bằng URL công khai.
+4. Bổ sung thông tin liên hệ hỗ trợ.
+5. Kiểm thử trên thiết bị thật và rà lại permissions/manifest merged.
