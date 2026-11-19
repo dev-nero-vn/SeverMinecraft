@@ -70,10 +70,11 @@ class SmartGameStorageActivity : Activity() {
     private var paused = false
     private val worker = Executors.newSingleThreadExecutor()
     private val queueRows = mutableMapOf<Long, QueueRow>()
+    private var queuePanelVisible = false
     private val queueRefreshHandler = Handler(Looper.getMainLooper())
     private val queueRefreshRunnable = object : Runnable {
         override fun run() {
-            if (isFinishing || isDestroyed) return
+            if (isFinishing || isDestroyed || !queuePanelVisible) return
             if (updateQueueRows()) {
                 refreshAll()
                 return
@@ -334,6 +335,9 @@ class SmartGameStorageActivity : Activity() {
     }
 
     private fun scanGameFolder(game: GameSpec, tree: Uri, sdTree: Uri?) {
+        queuePanelVisible = false
+        queueRefreshHandler.removeCallbacks(queueRefreshRunnable)
+        queueRows.clear()
         pendingPackage = game.packageName
         page.removeAllViews()
         addSection("Tài nguyên được phép truy cập", game.name + " • Thư mục do bạn chọn")
@@ -446,6 +450,7 @@ class SmartGameStorageActivity : Activity() {
     }
 
     private fun addQueueAndHistory() {
+        queuePanelVisible = true
         queueRefreshHandler.removeCallbacks(queueRefreshRunnable)
         queueRows.clear()
         addSection("Theo dõi tự động", "Quét các thư mục người dùng đã cấp quyền; lịch nền tối thiểu 15 phút và có thể bị Android trì hoãn")
@@ -854,7 +859,7 @@ class SmartGameStorageActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        if (queueRows.isNotEmpty() || database.getFolders().isNotEmpty()) {
+        if (queuePanelVisible && (queueRows.isNotEmpty() || database.getFolders().isNotEmpty())) {
             queueRefreshHandler.removeCallbacks(queueRefreshRunnable)
             queueRefreshHandler.postDelayed(queueRefreshRunnable, 1000L)
         }
