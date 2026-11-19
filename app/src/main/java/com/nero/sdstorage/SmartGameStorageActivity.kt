@@ -41,6 +41,8 @@ class SmartGameStorageActivity : Activity() {
         GameSpec("com.garena.game.kgvn", "Liên Quân Mobile")
     )
     private val prefs by lazy { getSharedPreferences("smart_game_storage", MODE_PRIVATE) }
+    private val database by lazy { SmartGameDatabase(applicationContext) }
+    private var pendingRestoreHistoryId: Long? = null
     private val storagePrefs by lazy { getSharedPreferences("sd_storage", MODE_PRIVATE) }
     private val blue = Color.rgb(16, 111, 240)
     private val ink = Color.rgb(19, 40, 72)
@@ -61,6 +63,7 @@ class SmartGameStorageActivity : Activity() {
 
     companion object {
         private const val REQUEST_GAME_TREE = 3101
+        private const val REQUEST_RESTORE_TREE = 3102
         private const val PREF_SD_TREE = "tree_uri"
         private const val GAME_TREE_PREFIX = "source_tree_"
         private const val ACTION_PROGRESS = "com.nero.sdstorage.GAME_TRANSFER_PROGRESS"
@@ -128,6 +131,7 @@ class SmartGameStorageActivity : Activity() {
         window.statusBarColor = Color.rgb(7, 74, 177)
         window.navigationBarColor = Color.WHITE
         buildLayout()
+        SmartGameWork.schedule(this)
         val filter = IntentFilter().apply {
             addAction(ACTION_PROGRESS)
             addAction(ACTION_FINISHED)
@@ -212,6 +216,7 @@ class SmartGameStorageActivity : Activity() {
 
         addSection("Danh sách game", "Thống kê các game đã khai báo; không quét trái phép dữ liệu riêng")
         games.forEach { addGameCard(it, sdTree) }
+        addQueueAndHistory()
     }
 
     private fun addGameCard(game: GameSpec, sdTree: Uri?) {
@@ -219,6 +224,10 @@ class SmartGameStorageActivity : Activity() {
         catch (_: PackageManager.NameNotFoundException) { null }
         val name = app?.let { packageManager.getApplicationLabel(it).toString() } ?: game.name
         val sourceTree = prefs.getString(GAME_TREE_PREFIX + game.packageName, null)?.let(Uri::parse)
+        if (sourceTree != null && database.getFolders().none { it.packageName == game.packageName }) {
+            database.saveFolder(game.packageName, game.name, sourceTree)
+        }
+        val trackedFolder = database.getFolders().firstOrNull { it.packageName == game.packageName }
 
         addCard {
             val head = LinearLayout(this@SmartGameStorageActivity).apply {
@@ -275,11 +284,29 @@ class SmartGameStorageActivity : Activity() {
                 addButton("Quét thư mục và xem tệp", blue, Color.WHITE) {
                     scanGameFolder(game, sourceTree, sdTree)
                 }
+                val autoEnabled = trackedFolder?.autoCopy == true
+                addButton(
+                    if (autoEnabled) "Tắt tự động sao chép tài nguyên mới" else "Bật tự động sao chép tài nguyên mới",
+                    if (autoEnabled) Color.rgb(255, 244, 224) else Color.rgb(232, 247, 240),
+                    if (autoEnabled) orange else green
+                ) {
+                    val enabled = !autoEnabled
+                    database.setAutoCopy(game.packageName, enabled)
+                    SmartGameWork.scanNow(this@SmartGameStorageActivity)
+                    toast(if (enabled) "Đã bật theo dõi và tự sao chép tệp mới đủ điều kiện. Bản gốc vẫn được giữ." else "Đã tắt tự động sao chép.")
+                    refreshAll()
+                }
+                addView(makeText(
+                    if (autoEnabled) "Đang theo dõi định kỳ. Tệp mới đủ điều kiện sẽ được sao chép sang SD; app không xóa bản gốc và không thay đường dẫn game."
+                    else "Có thể theo dõi thư mục định kỳ. Chế độ tự động chỉ sao chép tệp mới và giữ nguyên bản gốc.",
+                    10f, muted
+                ), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
             }
         }
     }
 
     private fun scanGameFolder(game: GameSpec, tree: Uri, sdTree: Uri?) {
+        pendingPackage = game.packageName
         page.removeAllViews()
         addSection("Tài nguyên được phép truy cập", game.name + " • Thư mục do bạn chọn")
         val status = makeText("Đang quét thư mục…", 12f, muted)
@@ -301,7 +328,7 @@ class SmartGameStorageActivity : Activity() {
                             val canMove = sdTree != null && tree != sdTree &&
                                 DocumentFile.fromTreeUri(this@SmartGameStorageActivity, sdTree)?.canWrite() == true
                             if (canMove) {
-                                addButton("Chuyển tệp sang SD", blue, Color.WHITE) {
+                                addButton("Thêm vào hàng đợi chuyển SD", blue, Color.WHITE) {
                                     confirmTransfer(file, sdTree!!)
                                 }
                             } else {
@@ -321,7 +348,7 @@ class SmartGameStorageActivity : Activity() {
             .setTitle("Chuyển tệp sang SD?")
             .setMessage(
                 "Tệp: " + file.name + "\nDung lượng: " + formatBytes(file.size) +
-                    "\n\nỨng dụng sẽ sao chép lên SD và xác minh SHA-256. Chỉ sau đó bạn mới được chọn xóa bản gốc."
+                    "\n\nỨng dụng sẽ thêm vào hàng đợi, kiểm tra dung lượng SD, sao chép và xác minh SHA-256. Bản gốc luôn được giữ lại; game không tự đổi đường dẫn sang SD."
             )
             .setNegativeButton("Hủy", null)
             .setPositiveButton("Bắt đầu") { _, _ -> startTransfer(file, sdTree) }
@@ -329,26 +356,17 @@ class SmartGameStorageActivity : Activity() {
     }
 
     private fun startTransfer(file: GameFile, sdTree: Uri) {
-        if (transferRunning) {
-            toast("Đang có một tác vụ chuyển dữ liệu.")
+        val packageName = pendingPackage.ifBlank { "manual-selected-folder" }
+        val id = database.enqueueJob(
+            packageName, file.uri, sdTree, file.name, file.size, automatic = false
+        )
+        if (id <= 0L) {
+            toast("Không thể thêm tệp vào hàng đợi.")
             return
         }
-        transferRunning = true
-        paused = false
-        addTransferPanel(file)
-        val intent = Intent(this, GameTransferService::class.java).apply {
-            action = GameTransferService.ACTION_START
-            putExtra(GameTransferService.EXTRA_SOURCE_URI, file.uri.toString())
-            putExtra(GameTransferService.EXTRA_TARGET_TREE, sdTree.toString())
-            putExtra(GameTransferService.EXTRA_FILE_NAME, file.name)
-            putExtra(GameTransferService.EXTRA_TOTAL_BYTES, file.size)
-        }
-        try {
-            if (Build.VERSION.SDK_INT >= 26) startForegroundService(intent) else startService(intent)
-        } catch (error: Exception) {
-            transferRunning = false
-            toast("Không khởi chạy được tác vụ: " + (error.message ?: "lỗi"))
-        }
+        SmartGameWork.runTransferQueue(this)
+        toast("Đã thêm " + file.name + " vào hàng đợi. Bản gốc sẽ được giữ lại.")
+        addQueueAndHistory()
     }
 
     private fun addTransferPanel(file: GameFile) {
@@ -458,17 +476,42 @@ class SmartGameStorageActivity : Activity() {
     @Deprecated("Uses SAF result callback")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != REQUEST_GAME_TREE || resultCode != RESULT_OK) return
+        if (requestCode != REQUEST_GAME_TREE && requestCode != REQUEST_RESTORE_TREE) return
+        if (resultCode != RESULT_OK) return
         val uri = data?.data ?: return
         try {
             val flags = data.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
             contentResolver.takePersistableUriPermission(uri, flags)
+            if (requestCode == REQUEST_RESTORE_TREE) {
+                val history = pendingRestoreHistoryId?.let { id -> database.getHistory().firstOrNull { it.id == id } }
+                    ?: error("Không tìm thấy bản ghi khôi phục.")
+                val id = database.enqueueJob(
+                    history.packageName,
+                    Uri.parse(history.destinationUri),
+                    uri,
+                    history.fileName,
+                    history.bytes,
+                    automatic = false
+                )
+                pendingRestoreHistoryId = null
+                if (id <= 0L) error("Không thể tạo tác vụ khôi phục.")
+                SmartGameWork.runTransferQueue(this)
+                toast("Đã thêm bản sao vào hàng đợi khôi phục. Tệp gốc hiện tại không bị ghi đè.")
+                refreshAll()
+                return
+            }
+
             prefs.edit().putString(GAME_TREE_PREFIX + pendingPackage, uri.toString()).apply()
             val game = games.firstOrNull { it.packageName == pendingPackage }
-            val sdTree = storagePrefs.getString(PREF_SD_TREE, null)?.let(Uri::parse)
-            if (game != null) scanGameFolder(game, uri, sdTree) else refreshAll()
+            if (game != null) {
+                database.saveFolder(game.packageName, game.name, uri)
+                scanGameFolder(game, uri, storagePrefs.getString(PREF_SD_TREE, null)?.let(Uri::parse))
+                SmartGameWork.scanNow(this)
+            } else {
+                refreshAll()
+            }
         } catch (error: Exception) {
-            toast("Không thể cấp quyền thư mục: " + (error.message ?: "lỗi"))
+            toast("Không thể xử lý thư mục: " + (error.message ?: "lỗi"))
         }
     }
 
