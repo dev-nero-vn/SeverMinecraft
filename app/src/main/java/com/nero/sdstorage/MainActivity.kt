@@ -53,6 +53,7 @@ class MainActivity : Activity() {
         selectedTree = prefs.getString(PREF_TREE_URI, null)?.let(Uri::parse)
         buildShell()
         showTab(0)
+        AppUpdateManager(this).checkForUpdate(showNoUpdate = false)
         if (Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQUEST_NOTIFICATIONS)
@@ -74,7 +75,7 @@ class MainActivity : Activity() {
                 setCornerRadii(floatArrayOf(0f, 0f, dp(24).toFloat(), dp(24).toFloat(), dp(24).toFloat(), dp(24).toFloat(), 0f, 0f))
             }
         }
-        headerTitle = makeText("SD Storage Manager", 23f, Color.WHITE, true)
+        headerTitle = makeText("SD Micro Tool", 23f, Color.WHITE, true)
         headerSubtitle = makeText("Ổ lưu trữ phụ • Tải thẳng vào SD", 12f, Color.rgb(225, 239, 255))
         top.addView(headerTitle)
         top.addView(headerSubtitle, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
@@ -161,7 +162,7 @@ class MainActivity : Activity() {
         }
         addCard {
             addView(makeText("NGUYÊN TẮC DUNG LƯỢNG", 15f, Color.WHITE, true))
-            addView(makeText("APK của SD Storage Manager vẫn chiếm một ít bộ nhớ trong sau khi cài. Tệp tải xuống được ghi lên SD sẽ được tính vào thẻ SD, không được báo là dung lượng trong đã giảm.", 12f, muted),
+            addView(makeText("APK của SD Micro Tool vẫn chiếm một ít bộ nhớ trong sau khi cài. Tệp tải xuống được ghi lên SD sẽ được tính vào thẻ SD, không được báo là dung lượng trong đã giảm.", 12f, muted),
                 LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
         }
     }
@@ -342,9 +343,12 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
         }
         addCard {
-            addView(makeText("PHIÊN BẢN 1.0.0", 14f, Color.WHITE, true))
-            addView(makeText("SD Storage Manager • Dev Nero\nBản đầu để kiểm thử, chưa phải bản phát hành Google Play.", 12f, muted),
+            addView(makeText("PHIÊN BẢN ỨNG DỤNG", 14f, Color.WHITE, true))
+            addView(makeText("SD Micro Tool • Phiên bản " + packageManager.getPackageInfo(packageName, 0).versionName, 12f, muted),
                 LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
+            addActionButton("Kiểm tra cập nhật", blue) {
+                AppUpdateManager(this@MainActivity).checkForUpdate(showNoUpdate = true)
+            }
         }
     }
 
@@ -481,6 +485,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        AppUpdateManager(this).resumePendingInstall()
         if (::page.isInitialized && currentTab == 0) showTab(0)
     }
 }
