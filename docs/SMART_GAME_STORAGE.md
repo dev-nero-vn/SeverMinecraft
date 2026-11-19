@@ -14,7 +14,7 @@ Smart Game Storage theo dõi thư mục người dùng đã cấp quyền, phát
 - WorkManager có chu kỳ yêu cầu tối thiểu 15 phút; Android có thể trì hoãn tác vụ vì Doze, tiết kiệm pin hoặc hạn chế nền. Đây không phải theo dõi tức thời.
 - Quét có giới hạn độ sâu 6 cấp và tối đa 1.500 tệp mỗi lượt để hạn chế tải trên thiết bị cấu hình thấp.
 - Phát hiện tệp mới hoặc thay đổi dựa trên URI, kích thước và thời gian sửa đổi.
-- Chế độ tự động theo thư mục: tự đưa tệp mới/đã thay đổi, không ẩn/không tạm, kích thước trên 0 và tối đa 512 MiB vào hàng đợi sao chép SD. Chỉ chạy nếu thư mục nguồn và đích còn quyền, SD còn dư tối thiểu kích thước tệp cộng 16 MiB.
+- Chế độ tự động theo thư mục: chỉ đưa tệp mới/đã thay đổi vào queue sau khi được quan sát ổn định qua hai lượt quét liên tiếp; tệp không ẩn/không tạm, kích thước trên 0 và tối đa 512 MiB. Chỉ chạy nếu thư mục nguồn và đích còn quyền, SD còn dư tối thiểu kích thước tệp cộng 16 MiB. Các tệp đã tồn tại khi bật auto được đánh dấu làm mốc, không tự chuyển hàng loạt.
 - Chế độ tự động chỉ **sao chép** và giữ bản gốc. Nó không tự chuyển đường dẫn của game, không tự giải phóng bộ nhớ trong, và không khẳng định game hỗ trợ tài nguyên ở vị trí mới.
 - Hàng đợi được lưu trong SQLite. Các công việc chạy tuần tự qua WorkManager foreground worker.
 - Tiến trình lưu vào DB và notification: dung lượng, phần trăm, tốc độ và ETA; có tạm dừng, tiếp tục, hủy và thử lại tác vụ thất bại.
@@ -39,7 +39,7 @@ StorageStatsManager chỉ cho số liệu dung lượng ứng dụng/package sau
 
 ## Hành vi tự động
 - Lần đầu chọn thư mục: app lưu quyền và quét metadata làm mốc ban đầu.
-- Chỉ sau khi người dùng bật tự động cho thư mục đó, các thay đổi được phát hiện về sau mới có thể vào hàng đợi sao chép.
+- Chỉ sau khi người dùng bật tự động cho thư mục đó, các thay đổi được phát hiện về sau mới có thể vào hàng đợi sao chép. Tệp phải ổn định qua hai lượt quét; Android/WorkManager thường quét định kỳ tối thiểu 15 phút nên có thể phải chờ lâu hơn.
 - Khi đổi thư mục nguồn, chế độ tự động reset về tắt để tránh tự động sao chép toàn bộ nội dung thư mục mới ngoài ý muốn.
 - Khi SD đầy, không có quyền, bị rút hoặc không xác định được dung lượng trống: tệp không được đưa vào hàng đợi tự động.
 - Khi cập nhật tệp, bản sao cũ không bị tự xóa; người dùng cần kiểm tra lịch sử và quản lý bản sao.
