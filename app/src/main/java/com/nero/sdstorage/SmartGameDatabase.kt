@@ -307,6 +307,12 @@ class SmartGameDatabase(context: Context) :
                 },
                 "id=?", arrayOf(job.id.toString())
             )
+            writableDatabase.update(
+                "transfer_history",
+                ContentValues().apply { put("status", "RESTORED_COPY") },
+                "destination_uri=? AND status='COPIED_VERIFIED'",
+                arrayOf(job.sourceUri)
+            )
             writableDatabase.insertWithOnConflict(
                 "transfer_history", null,
                 ContentValues().apply {
@@ -375,6 +381,20 @@ class SmartGameDatabase(context: Context) :
             "transfer_history",
             ContentValues().apply { put("status", "RESTORED_COPY") },
             "id=?", arrayOf(historyId.toString())
+        )
+    }
+
+    @Synchronized
+    fun resetInterruptedJobs() {
+        writableDatabase.update(
+            "transfer_jobs",
+            ContentValues().apply { put("status", "QUEUED") },
+            "status='RUNNING'", null
+        )
+        writableDatabase.update(
+            "transfer_jobs",
+            ContentValues().apply { put("status", "CANCELLED") },
+            "status='CANCEL_REQUESTED'", null
         )
     }
 
