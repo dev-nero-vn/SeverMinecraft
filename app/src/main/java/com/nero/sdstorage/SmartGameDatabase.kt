@@ -109,8 +109,10 @@ class SmartGameDatabase(context: Context) :
     fun saveFolder(packageName: String, gameName: String, treeUri: Uri) {
         val now = System.currentTimeMillis()
         var savedAutoCopy = 0
-        writableDatabase.query("tracked_folders", arrayOf("auto_copy"), "package_name=?", arrayOf(packageName), null, null, null).use { cursor ->
-            if (cursor.moveToFirst()) savedAutoCopy = cursor.getInt(0)
+        writableDatabase.query("tracked_folders", arrayOf("tree_uri", "auto_copy"), "package_name=?", arrayOf(packageName), null, null, null).use { cursor ->
+            if (cursor.moveToFirst() && cursor.getString(0) == treeUri.toString()) {
+                savedAutoCopy = cursor.getInt(1)
+            }
         }
         val values = ContentValues().apply {
             put("package_name", packageName)
