@@ -75,6 +75,7 @@ class GameTransferQueueWorker(context: Context, params: WorkerParameters) :
         var copied = 0L
         val startedAt = System.currentTimeMillis()
         val digest = MessageDigest.getInstance("SHA-256")
+        var finalFileRenamed = false
         try {
             val input = applicationContext.contentResolver.openInputStream(sourceUri)
                 ?: error("Không mở được dữ liệu nguồn.")
@@ -117,11 +118,12 @@ class GameTransferQueueWorker(context: Context, params: WorkerParameters) :
             require(temp.renameTo(finalName)) {
                 "Không đổi được tên tệp tạm trên SD. Bản gốc được giữ nguyên."
             }
+            finalFileRenamed = true
             val destination = root.findFile(finalName) ?: error("Không tìm thấy tệp sau khi đổi tên.")
             db.finishJob(job, destination.uri, sourceHash)
             updateNotification("Đã chuyển và xác minh: " + job.fileName, 100, true)
         } catch (error: Exception) {
-            temp.delete()
+            if (!finalFileRenamed) temp.delete()
             throw error
         }
     }
