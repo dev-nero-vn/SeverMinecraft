@@ -92,8 +92,8 @@ class SmartGameStorageActivity : Activity() {
                         AlertDialog.Builder(this@SmartGameStorageActivity)
                             .setTitle("Đã chuyển và xác minh")
                             .setMessage(
-                                name + " (" + formatBytes(size) + ") đã được ghi lên SD và xác minh SHA-256.\\n\\n" +
-                                    "Bản sao giống bản gốc, nhưng game không tự đổi đường dẫn sang SD. Chỉ xóa bản gốc nếu bạn chắc chắn game không còn cần tệp ở vị trí cũ.\\n\\nSHA-256: " + hash
+                                name + " (" + formatBytes(size) + ") đã được ghi lên SD và xác minh SHA-256.\n\n" +
+                                    "Bản sao giống bản gốc, nhưng game không tự đổi đường dẫn sang SD. Chỉ xóa bản gốc nếu bạn chắc chắn game không còn cần tệp ở vị trí cũ.\n\nSHA-256: " + hash
                             )
                             .setPositiveButton("Giữ bản gốc") { _, _ -> refreshAll() }
                             .setNegativeButton("Xóa bản gốc") { _, _ ->
