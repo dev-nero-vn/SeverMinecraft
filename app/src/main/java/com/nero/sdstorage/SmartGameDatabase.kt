@@ -107,9 +107,14 @@ class SmartGameDatabase(context: Context) :
     @Synchronized
     fun saveFolder(packageName: String, gameName: String, treeUri: Uri) {
         val now = System.currentTimeMillis()
+        var savedAutoCopy = 0
+        writableDatabase.query("tracked_folders", arrayOf("auto_copy"), "package_name=?", arrayOf(packageName), null, null, null).use { cursor ->
+            if (cursor.moveToFirst()) savedAutoCopy = cursor.getInt(0)
+        }
         val values = ContentValues().apply {
             put("package_name", packageName)
             put("game_name", gameName)
+            put("auto_copy", savedAutoCopy)
             put("tree_uri", treeUri.toString())
             put("last_scan_at", now)
         }
@@ -170,14 +175,16 @@ class SmartGameDatabase(context: Context) :
         val db = writableDatabase
         var oldSize: Long? = null
         var oldModified: Long? = null
+        var oldFirstSeen: Long? = null
         db.query(
-            "file_snapshots", arrayOf("size_bytes", "modified_at"),
+            "file_snapshots", arrayOf("size_bytes", "modified_at", "first_seen_at"),
             "package_name=? AND document_uri=?",
             arrayOf(packageName, documentUri.toString()), null, null, null
         ).use { cursor ->
             if (cursor.moveToFirst()) {
                 oldSize = cursor.getLong(0)
                 oldModified = cursor.getLong(1)
+                oldFirstSeen = cursor.getLong(2)
             }
         }
         val now = System.currentTimeMillis()
@@ -193,7 +200,7 @@ class SmartGameDatabase(context: Context) :
             put("size_bytes", size)
             put("modified_at", modifiedAt)
             put("mime_type", mimeType)
-            if (oldSize == null) put("first_seen_at", now)
+            put("first_seen_at", oldFirstSeen ?: now)
             put("last_seen_at", now)
         }
         db.insertWithOnConflict("file_snapshots", null, values, SQLiteDatabase.CONFLICT_REPLACE)
