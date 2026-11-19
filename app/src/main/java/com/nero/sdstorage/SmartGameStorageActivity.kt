@@ -131,6 +131,11 @@ class SmartGameStorageActivity : Activity() {
         window.statusBarColor = Color.rgb(7, 74, 177)
         window.navigationBarColor = Color.WHITE
         buildLayout()
+        games.forEach { game ->
+            prefs.getString(GAME_TREE_PREFIX + game.packageName, null)?.let { savedTree ->
+                database.saveFolder(game.packageName, game.name, Uri.parse(savedTree))
+            }
+        }
         SmartGameWork.schedule(this)
         val filter = IntentFilter().apply {
             addAction(ACTION_PROGRESS)
@@ -418,6 +423,24 @@ class SmartGameStorageActivity : Activity() {
     }
 
     private fun addQueueAndHistory() {
+        addSection("Theo dõi tự động", "Quét các thư mục người dùng đã cấp quyền; lịch nền tối thiểu 15 phút và có thể bị Android trì hoãn")
+        val trackedFolders = database.getFolders()
+        addCard {
+            addView(makeText(
+                trackedFolders.size.toString() + " thư mục đang theo dõi • " +
+                    trackedFolders.count { it.autoCopy } + " thư mục bật tự động sao chép",
+                12f, ink, true
+            ))
+            addView(makeText(
+                "Chế độ tự động chỉ sao chép tệp mới/đã thay đổi đủ điều kiện (tối đa 512 MB mỗi tệp) lên SD và giữ nguyên bản gốc. Nó không thay đường dẫn mà game sử dụng và không tự giải phóng bộ nhớ trong.",
+                10f, muted
+            ), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
+            addButton("Quét ngay các thư mục đã theo dõi", Color.rgb(235, 244, 255), blue) {
+                SmartGameWork.scanNow(this@SmartGameStorageActivity)
+                toast("Đã xếp lịch quét. Kết quả mới sẽ được thông báo khi hoàn tất.")
+            }
+        }
+
         addSection("Hàng đợi chuyển dữ liệu", "Tác vụ được lưu lại khi đóng ứng dụng")
         val jobs = database.getJobs()
         if (jobs.isEmpty()) {
@@ -605,8 +628,15 @@ class SmartGameStorageActivity : Activity() {
                         break
                     }
                     val size = child.length().coerceAtLeast(0L)
+                    val fileName = child.name ?: "tệp-không-tên"
                     total += size
-                    files.add(GameFile(child.uri, child.name ?: "tệp-không-tên", size))
+                    files.add(GameFile(child.uri, fileName, size))
+                    if (pendingPackage.isNotBlank()) {
+                        database.recordSnapshot(
+                            pendingPackage, child.uri, fileName, size,
+                            child.lastModified(), child.type
+                        )
+                    }
                 }
             }
             if (truncated) break
