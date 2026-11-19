@@ -1,42 +1,30 @@
-# SD Micro Tool
+# NEXORA Game Space
 
-Ứng dụng Android quản lý thẻ SD, bộ nhớ và các tệp người dùng chủ động cấp quyền.
+**NEXORA** là ứng dụng Android Gaming Hub theo định hướng Landscape, phong cách Extreme Gaming / Cyber Future, nhận diện tím neon + cyan.
 
-## Chức năng
-- Chọn thư mục SD bằng Storage Access Framework.
-- Tải HTTPS theo luồng trực tiếp vào file tạm trên SD.
-- Duyệt và quản lý tệp trong thư mục được cấp quyền.
-- Dashboard dung lượng bộ nhớ trong và thẻ SD.
-- Smart Game Storage: nhận diện package Roblox, Free Fire, Free Fire MAX và Liên Quân; thống kê app/data/cache khi có Usage Access.
-- Theo dõi thư mục được cấp quyền bằng quét định kỳ WorkManager.
-- Tự động sao chép tệp mới/đã thay đổi sang SD khi người dùng bật; bản gốc luôn được giữ.
-- Hàng đợi chuyển lưu trữ, thông báo foreground, tiến trình, tốc độ, ETA, tạm dừng, tiếp tục, hủy và thử lại.
-- Xác minh SHA-256, lịch sử, khôi phục và báo cáo dung lượng đã giải phóng thực tế.
-- In-app updater kiểm tra version manifest, package, checksum và chứng thư ký trước khi mở Android Package Installer.
+> Trạng thái hiện tại: nền tảng ban đầu. Đã có splash animation, quét và mở game Android được hệ thống phân loại. Các mô-đun Game Turbo nâng cao chưa được tuyên bố là hoàn thành.
 
-## Giới hạn Android
-- Yêu cầu Android 11 trở lên, không root.
-- Android 11+ chặn SAF truy cập Android/data/ và Android/obb/ của game khác.
-- Smart Game Storage chỉ quản lý các thư mục/tệp người dùng chọn và Android cho phép truy cập.
-- Chế độ tự động sao chép không thay đổi đường dẫn mà game sử dụng và không tự giải phóng bộ nhớ trong.
-- Không tuyên bố chuyển được cache private hoặc tài nguyên riêng của Roblox/Free Fire/Liên Quân.
-- Tác vụ nền WorkManager có chu kỳ tối thiểu 15 phút và có thể bị Android trì hoãn vì pin/Doze.
-- Dữ liệu thống kê package yêu cầu người dùng cấp Usage Access; quyền đó không mở khóa file private.
-- APK, database và dữ liệu riêng của SD Micro Tool vẫn dùng một phần bộ nhớ trong.
-
-## Tài liệu
-- docs/SMART_GAME_STORAGE.md
-- docs/RELEASE_SIGNING.md
-- docs/DATA_SAFETY_DRAFT.md
-- PRIVACY_POLICY.md
+## Định hướng
+- Ứng dụng Android độc lập, ưu tiên xử lý trên thiết bị.
+- Bố cục ngang (Landscape).
+- Splash animation neon và tùy chọn bật/tắt hiệu ứng.
+- Thư viện game quét ứng dụng Android có danh mục GAME và mở bằng launcher intent.
+- Không giả lập số liệu hiệu năng, không vượt qua bảo vệ nhiệt hoặc quyền Android.
 
 ## Build
-Mở repository bằng Android Studio hoặc chạy gradle :app:assembleDebug.
+Yêu cầu JDK 17, Gradle 8.13 và Android SDK 36.
 
-GitHub Actions build APK debug và đóng gói ZIP sau mỗi lần push lên main.
+```bash
+gradle --no-daemon :app:assembleDebug
+```
 
-## Release
-Bản release APK/AAB phải dùng keystore cố định do chủ ứng dụng quản lý. Không commit keystore hoặc mật khẩu vào repository. Làm theo docs/RELEASE_SIGNING.md.
+APK: `app/build/outputs/apk/debug/app-debug.apk`
 
-## Google Play
-Trước khi phát hành cần có AAB Release có chữ ký, hoàn thiện Data safety theo bản cuối, địa chỉ/email hỗ trợ, chính sách quyền riêng tư được host công khai và kiểm thử thiết bị thật. Bản debug không phải bản phát hành Play.
+GitHub Actions tạo `NEXORA.apk` và `NEXORA-Android.zip` (ZIP có APK bên trong) khi push lên `main` hoặc chạy thủ công workflow **NEXORA Android Build**.
+
+Đây là bản debug để kiểm thử, chưa phải bản release đã ký. Bản phát hành cần keystore riêng, kiểm thử thiết bị thật và quy trình ký an toàn.
+
+## Các mô-đun còn trong lộ trình
+Floating Game Assistant, Game Profiles, FPS/performance monitor, screen capture, audio/network center, analytics và OEM compatibility. Những tính năng phụ thuộc Android/OEM/phần cứng chỉ được bật khi có hỗ trợ thực tế.
+
+Thiết bị kiểm thử đầu tiên: Samsung Galaxy A07.

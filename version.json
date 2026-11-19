@@ -1,10 +1,7 @@
 {
-  "version": "1.0.0",
+  "name": "NEXORA Game Space",
+  "applicationId": "com.nexora.gamespace",
   "versionCode": 1,
-  "downloadUrl": "https://github.com/dev-nero-vn/SeverMinecraft/releases/latest/download/SD-Micro-Tool.apk",
-  "changelog": "Bản đầu tiên của SD Micro Tool.",
-  "mandatory": false,
-  "signingCertificateSha256": "",
-  "apkSha256": "",
-  "generatedAt": "2026-11-19T00:00:00Z"
+  "versionName": "0.1.0",
+  "channel": "debug"
 }

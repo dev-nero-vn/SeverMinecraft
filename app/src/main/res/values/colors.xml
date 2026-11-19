@@ -1,2 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources><color name="launcher_background">#0867E8</color></resources>
+<resources>
+    <color name="nexora_background">#070812</color>
+    <color name="nexora_purple">#A855F7</color>
+    <color name="nexora_cyan">#22D3EE</color>
+</resources>
