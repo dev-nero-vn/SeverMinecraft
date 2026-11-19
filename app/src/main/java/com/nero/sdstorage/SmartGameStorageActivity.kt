@@ -542,7 +542,7 @@ class SmartGameStorageActivity : Activity() {
                 }
             }
         }
-        addButtonOnPage("Làm mới hàng đợi và lịch sử", Color.rgb(235, 244, 255), blue) {
+        addPageButton("Làm mới hàng đợi và lịch sử", Color.rgb(235, 244, 255), blue) {
             refreshAll()
         }
     }
