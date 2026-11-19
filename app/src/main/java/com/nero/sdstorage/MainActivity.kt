@@ -143,7 +143,7 @@ class MainActivity : Activity() {
             setBackgroundColor(Color.WHITE)
             elevation = dp(10).toFloat()
         }
-        val labels = listOf("⌂\\nTổng quan", "↓\\nTải về", "▤\\nTệp SD", "🎮\\nGame", "⚙\\nCài đặt")
+        val labels = listOf("⌂\nTổng quan", "↓\nTải về", "▤\nTệp SD", "🎮\nGame", "⚙\nCài đặt")
         val items = mutableListOf<TextView>()
         labels.forEachIndexed { index, label ->
             val item = makeText(label, 11f, muted, true).apply {
