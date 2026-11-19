@@ -15,10 +15,13 @@ import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.Process
 import android.os.storage.StorageManager
 import android.provider.Settings
 import android.view.Gravity
+import android.view.View
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
@@ -33,6 +36,12 @@ class SmartGameStorageActivity : Activity() {
     private data class GameSpec(val packageName: String, val name: String)
     private data class GameFile(val uri: Uri, val name: String, val size: Long)
     private data class FolderScan(val bytes: Long, val files: List<GameFile>, val truncated: Boolean)
+    private data class QueueRow(
+        val summary: TextView,
+        val progress: ProgressBar,
+        val speed: TextView,
+        var lastStatus: String
+    )
 
     private val games = listOf(
         GameSpec("com.roblox.client", "Roblox"),
@@ -60,6 +69,20 @@ class SmartGameStorageActivity : Activity() {
     private var transferRunning = false
     private var paused = false
     private val worker = Executors.newSingleThreadExecutor()
+    private val queueRows = mutableMapOf<Long, QueueRow>()
+    private val queueRefreshHandler = Handler(Looper.getMainLooper())
+    private val queueRefreshRunnable = object : Runnable {
+        override fun run() {
+            if (isFinishing || isDestroyed) return
+            if (updateQueueRows()) {
+                refreshAll()
+                return
+            }
+            if (queueRows.isNotEmpty() || database.getFolders().isNotEmpty()) {
+                queueRefreshHandler.postDelayed(this, 2000L)
+            }
+        }
+    }
 
     companion object {
         private const val REQUEST_GAME_TREE = 3101
@@ -423,6 +446,8 @@ class SmartGameStorageActivity : Activity() {
     }
 
     private fun addQueueAndHistory() {
+        queueRefreshHandler.removeCallbacks(queueRefreshRunnable)
+        queueRows.clear()
         addSection("Theo dõi tự động", "Quét các thư mục người dùng đã cấp quyền; lịch nền tối thiểu 15 phút và có thể bị Android trì hoãn")
         val trackedFolders = database.getFolders()
         addCard {
@@ -458,25 +483,27 @@ class SmartGameStorageActivity : Activity() {
                         "FAILED" -> "Thất bại"
                         else -> job.status
                     }
-                    addView(makeText(
+                    val summaryView = makeText(
                         statusText + " • " + formatBytes(job.progressBytes) + " / " + formatBytes(job.totalBytes),
                         11f, if (job.status == "FAILED") red else muted
-                    ), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
+                    )
+                    addView(summaryView, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
                     val progress = ProgressBar(this@SmartGameStorageActivity, null, android.R.attr.progressBarStyleHorizontal).apply {
                         max = 100
                         this.progress = percent
                         progressTintList = android.content.res.ColorStateList.valueOf(blue)
                     }
                     addView(progress, LinearLayout.LayoutParams(-1, dp(7)).apply { topMargin = dp(7) })
-                    val speed = job.speedBytesPerSecond
-                    if (job.status == "RUNNING" && speed > 0L) {
-                        val remaining = (job.totalBytes - job.progressBytes).coerceAtLeast(0L)
-                        val eta = remaining / speed
-                        addView(makeText(
-                            formatBytes(speed) + "/s • Còn khoảng " + eta + " giây",
-                            10f, muted
-                        ), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
+                    val speedView = makeText("", 10f, muted).apply {
+                        visibility = if (job.status == "RUNNING" && job.speedBytesPerSecond > 0L) View.VISIBLE else View.GONE
                     }
+                    if (job.status == "RUNNING" && job.speedBytesPerSecond > 0L) {
+                        val remaining = (job.totalBytes - job.progressBytes).coerceAtLeast(0L)
+                        val eta = remaining / job.speedBytesPerSecond
+                        speedView.text = formatBytes(job.speedBytesPerSecond) + "/s • Còn khoảng " + eta + " giây"
+                    }
+                    addView(speedView, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
+                    queueRows[job.id] = QueueRow(summaryView, progress, speedView, job.status)
                     when (job.status) {
                         "RUNNING" -> {
                             addButton("Tạm dừng", Color.rgb(235, 244, 255), blue) {
@@ -568,6 +595,49 @@ class SmartGameStorageActivity : Activity() {
         addPageButton("Làm mới hàng đợi và lịch sử", Color.rgb(235, 244, 255), blue) {
             refreshAll()
         }
+        if (queueRows.isNotEmpty() || trackedFolders.isNotEmpty()) {
+            queueRefreshHandler.postDelayed(queueRefreshRunnable, 2000L)
+        }
+    }
+
+    private fun updateQueueRows(): Boolean {
+        val jobs = database.getJobs().associateBy { it.id }
+        if (jobs.keys.any { it !in queueRows.keys }) return true
+
+        for ((id, row) in queueRows) {
+            val job = jobs[id]
+            if (job == null) {
+                val terminalStatus = database.getJobStatus(id)
+                if (terminalStatus == "COMPLETED" || terminalStatus == "CANCELLED") return true
+                row.summary.text = "Trạng thái: " + (terminalStatus ?: "Không còn trong hàng đợi")
+                row.speed.visibility = View.GONE
+                continue
+            }
+            if (job.status != row.lastStatus) return true
+
+            val label = when (job.status) {
+                "QUEUED" -> "Đang chờ"
+                "RUNNING" -> "Đang chuyển"
+                "PAUSED" -> "Đã tạm dừng"
+                "FAILED" -> "Thất bại"
+                else -> job.status
+            }
+            row.summary.text = label + " • " + formatBytes(job.progressBytes) +
+                " / " + formatBytes(job.totalBytes)
+            row.progress.progress = if (job.totalBytes > 0L) {
+                ((job.progressBytes * 100L) / job.totalBytes).toInt().coerceIn(0, 100)
+            } else 0
+
+            if (job.status == "RUNNING" && job.speedBytesPerSecond > 0L) {
+                val remaining = (job.totalBytes - job.progressBytes).coerceAtLeast(0L)
+                val eta = remaining / job.speedBytesPerSecond
+                row.speed.text = formatBytes(job.speedBytesPerSecond) + "/s • Còn khoảng " + eta + " giây"
+                row.speed.visibility = View.VISIBLE
+            } else {
+                row.speed.visibility = View.GONE
+            }
+        }
+        return false
     }
 
     private fun confirmCancelJob(job: GameTransferJob) {
@@ -782,7 +852,21 @@ class SmartGameStorageActivity : Activity() {
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
     private fun toast(value: String) = Toast.makeText(this, value, Toast.LENGTH_LONG).show()
 
+    override fun onResume() {
+        super.onResume()
+        if (queueRows.isNotEmpty() || database.getFolders().isNotEmpty()) {
+            queueRefreshHandler.removeCallbacks(queueRefreshRunnable)
+            queueRefreshHandler.postDelayed(queueRefreshRunnable, 1000L)
+        }
+    }
+
+    override fun onPause() {
+        queueRefreshHandler.removeCallbacks(queueRefreshRunnable)
+        super.onPause()
+    }
+
     override fun onDestroy() {
+        queueRefreshHandler.removeCallbacks(queueRefreshRunnable)
         try { unregisterReceiver(transferReceiver) } catch (_: Exception) {}
         worker.shutdown()
         super.onDestroy()
