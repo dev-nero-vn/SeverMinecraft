@@ -138,6 +138,10 @@ class GameTransferQueueWorker(context: Context, params: WorkerParameters) :
                 }
                 "CANCEL_REQUESTED" -> throw TransferCancelled()
                 "RUNNING" -> return
+                "QUEUED" -> {
+                    db.updateJobStatus(job.id, "RUNNING")
+                    return
+                }
                 else -> throw TransferCancelled()
             }
         }
