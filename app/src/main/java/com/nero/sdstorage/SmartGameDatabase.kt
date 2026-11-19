@@ -43,7 +43,7 @@ data class GameTransferHistory(
 enum class SnapshotChange { NEW_FILE, CHANGED_FILE, STABLE_FILE, UNCHANGED }
 
 class SmartGameDatabase(context: Context) :
-    SQLiteOpenHelper(context.applicationContext, "sd_micro_smart_game.db", null, 2) {
+    SQLiteOpenHelper(context.applicationContext, "sd_micro_smart_game.db", null, 3) {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -66,6 +66,7 @@ class SmartGameDatabase(context: Context) :
                 first_seen_at INTEGER NOT NULL,
                 last_seen_at INTEGER NOT NULL,
                 stable_scans INTEGER NOT NULL DEFAULT 0,
+                present INTEGER NOT NULL DEFAULT 1,
                 PRIMARY KEY(package_name, document_uri)
             )"""
         )
@@ -108,16 +109,24 @@ class SmartGameDatabase(context: Context) :
         if (oldVersion < 2) {
             db.execSQL("ALTER TABLE file_snapshots ADD COLUMN stable_scans INTEGER NOT NULL DEFAULT 0")
         }
+        if (oldVersion < 3) {
+            db.execSQL("ALTER TABLE file_snapshots ADD COLUMN present INTEGER NOT NULL DEFAULT 1")
+        }
     }
 
     @Synchronized
     fun saveFolder(packageName: String, gameName: String, treeUri: Uri) {
         val now = System.currentTimeMillis()
         var savedAutoCopy = 0
+        var previousTreeUri: String? = null
         writableDatabase.query("tracked_folders", arrayOf("tree_uri", "auto_copy"), "package_name=?", arrayOf(packageName), null, null, null).use { cursor ->
-            if (cursor.moveToFirst() && cursor.getString(0) == treeUri.toString()) {
-                savedAutoCopy = cursor.getInt(1)
+            if (cursor.moveToFirst()) {
+                previousTreeUri = cursor.getString(0)
+                if (previousTreeUri == treeUri.toString()) savedAutoCopy = cursor.getInt(1)
             }
+        }
+        if (previousTreeUri != null && previousTreeUri != treeUri.toString()) {
+            writableDatabase.delete("file_snapshots", "package_name=?", arrayOf(packageName))
         }
         val values = ContentValues().apply {
             put("package_name", packageName)
@@ -200,9 +209,10 @@ class SmartGameDatabase(context: Context) :
         var oldModified: Long? = null
         var oldFirstSeen: Long? = null
         var oldStableScans = 0
+        var wasPresent = true
         db.query(
             "file_snapshots",
-            arrayOf("size_bytes", "modified_at", "first_seen_at", "stable_scans"),
+            arrayOf("size_bytes", "modified_at", "first_seen_at", "stable_scans", "present"),
             "package_name=? AND document_uri=?",
             arrayOf(packageName, documentUri.toString()),
             null, null, null
@@ -212,11 +222,12 @@ class SmartGameDatabase(context: Context) :
                 oldModified = cursor.getLong(1)
                 oldFirstSeen = cursor.getLong(2)
                 oldStableScans = cursor.getInt(3)
+                wasPresent = cursor.getInt(4) == 1
             }
         }
 
         val now = System.currentTimeMillis()
-        val isNew = oldSize == null
+        val isNew = oldSize == null || !wasPresent
         val isChanged = !isNew && (oldSize != size || oldModified != modifiedAt)
         val stableScans = when {
             isNew || isChanged -> 1
@@ -239,9 +250,49 @@ class SmartGameDatabase(context: Context) :
             put("first_seen_at", oldFirstSeen ?: now)
             put("last_seen_at", now)
             put("stable_scans", stableScans)
+            put("present", 1)
         }
         db.insertWithOnConflict("file_snapshots", null, values, SQLiteDatabase.CONFLICT_REPLACE)
         return change
+    }
+
+    @Synchronized
+    fun markMissingSnapshots(packageName: String, seenDocumentUris: Set<String>): Int {
+        val db = writableDatabase
+        val missing = mutableListOf<String>()
+        db.query(
+            "file_snapshots",
+            arrayOf("document_uri"),
+            "package_name=? AND present=1",
+            arrayOf(packageName),
+            null, null, null
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                val uri = cursor.getString(0)
+                if (uri !in seenDocumentUris) missing.add(uri)
+            }
+        }
+        if (missing.isEmpty()) return 0
+        val now = System.currentTimeMillis()
+        db.beginTransaction()
+        try {
+            missing.forEach { uri ->
+                db.update(
+                    "file_snapshots",
+                    ContentValues().apply {
+                        put("present", 0)
+                        put("stable_scans", 0)
+                        put("last_seen_at", now)
+                    },
+                    "package_name=? AND document_uri=? AND present=1",
+                    arrayOf(packageName, uri)
+                )
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        return missing.size
     }
 
     @Synchronized
