@@ -88,9 +88,14 @@ class GameFolderMonitorWorker(context: Context, params: WorkerParameters) :
                     tracked.packageName, file.uri, file.name,
                     file.size, file.modifiedAt, file.mimeType
                 )
-                if (change != SnapshotChange.UNCHANGED) {
+                if (change == SnapshotChange.NEW_FILE || change == SnapshotChange.CHANGED_FILE ||
+                    change == SnapshotChange.STABLE_FILE) {
                     detectedCount++
                     if (samples.size < 4) samples.add(file.name)
+                }
+                // Only enqueue on the transition to STABLE_FILE: it has been seen unchanged
+                // in at least two consecutive scans. Never repeatedly enqueue every periodic pass.
+                if (change == SnapshotChange.STABLE_FILE) {
                     val eligible = isAutoCopyEligible(file)
                     val enoughSpace = targetUri != null &&
                         freeBytesForTree(targetUri) > file.size + RESERVE_BYTES
