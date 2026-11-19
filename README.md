@@ -1,29 +1,42 @@
-# SD Storage Manager
+# SD Micro Tool
 
-Ứng dụng Android quản lý thư mục SD và tải tệp trực tiếp vào thẻ nhớ.
+Ứng dụng Android quản lý thẻ SD, bộ nhớ và các tệp người dùng chủ động cấp quyền.
 
-## Tính năng
-- Chọn thư mục trên thẻ SD bằng Storage Access Framework.
-- Ghi luồng tải HTTPS trực tiếp vào file tạm .part nằm trên SD; khi tải xong đổi tên file ngay trên SD.
-- Không tải file hoàn chỉnh vào bộ nhớ trong rồi sao chép sang SD.
-- Duyệt và xóa tệp trong cây thư mục mà người dùng đã cấp quyền.
-- Hiển thị riêng dung lượng bộ nhớ trong và thẻ SD.
-- Giao diện tiếng Việt, launcher icon riêng, tải nền bằng foreground service.
+## Chức năng
+- Chọn thư mục SD bằng Storage Access Framework.
+- Tải HTTPS theo luồng trực tiếp vào file tạm trên SD.
+- Duyệt và quản lý tệp trong thư mục được cấp quyền.
+- Dashboard dung lượng bộ nhớ trong và thẻ SD.
+- Smart Game Storage: nhận diện package Roblox, Free Fire, Free Fire MAX và Liên Quân; thống kê app/data/cache khi có Usage Access.
+- Theo dõi thư mục được cấp quyền bằng quét định kỳ WorkManager.
+- Tự động sao chép tệp mới/đã thay đổi sang SD khi người dùng bật; bản gốc luôn được giữ.
+- Hàng đợi chuyển lưu trữ, thông báo foreground, tiến trình, tốc độ, ETA, tạm dừng, tiếp tục, hủy và thử lại.
+- Xác minh SHA-256, lịch sử, khôi phục và báo cáo dung lượng đã giải phóng thực tế.
+- In-app updater kiểm tra version manifest, package, checksum và chứng thư ký trước khi mở Android Package Installer.
 
 ## Giới hạn Android
-- APK cài đặt và dữ liệu riêng của ứng dụng vẫn sử dụng một phần bộ nhớ trong.
-- SAF chỉ cấp quyền cho thư mục do người dùng chọn; app không tự ý truy cập thư mục riêng của Roblox hoặc game khác.
-- Không có tính năng giả mạo “chuyển cache game”, không đoán số GB tiết kiệm.
-- Thẻ SD phải được nhận diện là removable storage. Android/nhà sản xuất có thể giới hạn một số thư mục.
-- Dữ liệu mạng được truyền theo luồng với bộ đệm RAM; Android vẫn có thể dùng một lượng nhỏ cache hệ thống.
+- Yêu cầu Android 11 trở lên, không root.
+- Android 11+ chặn SAF truy cập Android/data/ và Android/obb/ của game khác.
+- Smart Game Storage chỉ quản lý các thư mục/tệp người dùng chọn và Android cho phép truy cập.
+- Chế độ tự động sao chép không thay đổi đường dẫn mà game sử dụng và không tự giải phóng bộ nhớ trong.
+- Không tuyên bố chuyển được cache private hoặc tài nguyên riêng của Roblox/Free Fire/Liên Quân.
+- Tác vụ nền WorkManager có chu kỳ tối thiểu 15 phút và có thể bị Android trì hoãn vì pin/Doze.
+- Dữ liệu thống kê package yêu cầu người dùng cấp Usage Access; quyền đó không mở khóa file private.
+- APK, database và dữ liệu riêng của SD Micro Tool vẫn dùng một phần bộ nhớ trong.
+
+## Tài liệu
+- docs/SMART_GAME_STORAGE.md
+- docs/RELEASE_SIGNING.md
+- docs/DATA_SAFETY_DRAFT.md
+- PRIVACY_POLICY.md
 
 ## Build
-Mở repository bằng Android Studio hoặc chạy: gradle :app:assembleDebug
+Mở repository bằng Android Studio hoặc chạy gradle :app:assembleDebug.
 
-GitHub Actions tự build APK debug và đóng gói ZIP sau mỗi lần push lên main.
+GitHub Actions build APK debug và đóng gói ZIP sau mỗi lần push lên main.
+
+## Release
+Bản release APK/AAB phải dùng keystore cố định do chủ ứng dụng quản lý. Không commit keystore hoặc mật khẩu vào repository. Làm theo docs/RELEASE_SIGNING.md.
 
 ## Google Play
-Bản Actions hiện tạo APK debug để cài thử. Trước khi xuất bản Google Play cần build AAB release có ký bằng khóa phát hành do chủ sở hữu quản lý, hoàn tất biểu mẫu Data safety, chính sách quyền riêng tư và kiểm thử trên thiết bị thật.
-
-## Smart Game Storage
-Xem [docs/SMART_GAME_STORAGE.md](docs/SMART_GAME_STORAGE.md). Tính năng thống kê game cần Usage Access; chuyển tệp chỉ hoạt động trong thư mục do người dùng cấp quyền. Không thể di chuyển dữ liệu riêng của game trên Android 11+.
+Trước khi phát hành cần có AAB Release có chữ ký, hoàn thiện Data safety theo bản cuối, địa chỉ/email hỗ trợ, chính sách quyền riêng tư được host công khai và kiểm thử thiết bị thật. Bản debug không phải bản phát hành Play.
