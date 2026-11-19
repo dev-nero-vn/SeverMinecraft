@@ -14,6 +14,7 @@ Smart Game Storage theo dõi thư mục người dùng đã cấp quyền, phát
 - WorkManager có chu kỳ yêu cầu tối thiểu 15 phút; Android có thể trì hoãn tác vụ vì Doze, tiết kiệm pin hoặc hạn chế nền. Đây không phải theo dõi tức thời.
 - Quét có giới hạn độ sâu 6 cấp và tối đa 1.500 tệp mỗi lượt để hạn chế tải trên thiết bị cấu hình thấp.
 - Phát hiện tệp mới hoặc thay đổi dựa trên URI, kích thước và thời gian sửa đổi.
+- Phát hiện tệp biến mất khỏi thư mục nguồn chỉ khi lượt quét hoàn tất đầy đủ; nếu provider lỗi, quyền mất, thư mục vượt độ sâu hoặc đạt giới hạn 1.500 tệp thì không đánh dấu tệp là đã xóa. Sự kiện xóa nguồn không tự xóa bản sao trên SD.
 - Chế độ tự động theo thư mục: chỉ đưa tệp mới/đã thay đổi vào queue sau khi được quan sát ổn định qua hai lượt quét liên tiếp; tệp không ẩn/không tạm, kích thước trên 0 và tối đa 512 MiB. Chỉ chạy nếu thư mục nguồn và đích còn quyền, SD còn dư tối thiểu kích thước tệp cộng 16 MiB. Các tệp đã tồn tại khi bật auto được đánh dấu làm mốc, không tự chuyển hàng loạt.
 - Chế độ tự động chỉ **sao chép** và giữ bản gốc. Nó không tự chuyển đường dẫn của game, không tự giải phóng bộ nhớ trong, và không khẳng định game hỗ trợ tài nguyên ở vị trí mới.
 - Hàng đợi được lưu trong SQLite. Các công việc chạy tuần tự qua WorkManager foreground worker.
@@ -48,7 +49,8 @@ StorageStatsManager chỉ cho số liệu dung lượng ứng dụng/package sau
 ## Kiểm thử trước phát hành
 Các kiểm tra sau cần chạy trên điện thoại thật (ưu tiên Samsung Galaxy A07) trước khi phát hành:
 1. Chọn thư mục bình thường trên SD, quét lần đầu và xác nhận auto-copy mặc định tắt.
-2. Bật auto-copy, tạo tệp mới trong thư mục được giám sát, chờ lượt quét nền hoặc bấm quét ngay; xác nhận tệp vào queue và bản gốc vẫn còn.
+2. Bật auto-copy, tạo tệp mới trong thư mục được giám sát, chờ hai lượt quét ổn định; xác nhận tệp vào queue và bản gốc vẫn còn.
+3. Xóa một tệp thử khỏi thư mục nguồn; xác nhận chỉ ghi nhận mất tệp sau lượt quét đầy đủ và không xóa bản sao trên SD.
 3. Thay đổi kích thước/timestamp, xác nhận phát hiện thay đổi một lần, không lặp queue liên tục.
 4. Kiểm tra queue nhiều tệp, pause/resume/cancel, tệp tên trùng, tệp lớn và file provider lỗi.
 5. Thẻ SD thiếu dung lượng hoặc bị rút; xác nhận task lỗi an toàn, không xóa nguồn.
