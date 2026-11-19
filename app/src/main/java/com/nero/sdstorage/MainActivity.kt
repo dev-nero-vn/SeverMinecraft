@@ -16,8 +16,11 @@ import android.os.Environment
 import android.os.StatFs
 import android.os.storage.StorageManager
 import android.provider.DocumentsContract
+import android.text.InputType
 import android.view.Gravity
+import android.view.View
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
@@ -32,15 +35,19 @@ class MainActivity : Activity() {
     private var currentFolder: DocumentFile? = null
     private var currentTab = 0
     private lateinit var page: LinearLayout
-    private lateinit var headerTitle: TextView
     private lateinit var headerSubtitle: TextView
-    private val tabButtons = mutableListOf<TextView>()
-    private val dark = Color.rgb(8, 18, 38)
-    private val panel = Color.rgb(19, 35, 62)
-    private val muted = Color.rgb(169, 187, 213)
-    private val blue = Color.rgb(20, 112, 245)
-    private val green = Color.rgb(38, 198, 139)
+    private lateinit var navItems: List<TextView>
     private var activeCard: LinearLayout? = null
+
+    private val pageBg = Color.rgb(244, 248, 255)
+    private val blue = Color.rgb(16, 111, 240)
+    private val blueDark = Color.rgb(7, 74, 177)
+    private val ink = Color.rgb(19, 40, 72)
+    private val muted = Color.rgb(103, 122, 151)
+    private val green = Color.rgb(21, 176, 119)
+    private val orange = Color.rgb(230, 145, 38)
+    private val red = Color.rgb(211, 76, 76)
+    private val line = Color.rgb(224, 233, 246)
 
     companion object {
         private const val REQUEST_SD_TREE = 2101
@@ -51,40 +58,80 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         selectedTree = prefs.getString(PREF_TREE_URI, null)?.let(Uri::parse)
+        window.statusBarColor = blueDark
+        window.navigationBarColor = Color.WHITE
+        if (Build.VERSION.SDK_INT >= 26) {
+            window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        }
         buildShell()
         showTab(0)
         AppUpdateManager(this).checkForUpdate(showNoUpdate = false)
+
         if (Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQUEST_NOTIFICATIONS)
+        }
+        if (!hasRemovableSdCard()) {
+            page.post {
+                AlertDialog.Builder(this)
+                    .setTitle("Chưa có thẻ SD")
+                    .setMessage("Hãy gắn thẻ nhớ SD vào điện thoại để chọn nơi lưu và sử dụng các chức năng lưu trữ ngoài.")
+                    .setPositiveButton("Đã hiểu", null)
+                    .show()
+            }
         }
     }
 
     private fun buildShell() {
         val shell = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(dark)
+            setBackgroundColor(pageBg)
         }
-        val top = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(20), dp(20), dp(14))
+
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(18), dp(13), dp(18), dp(13))
             background = GradientDrawable(
                 GradientDrawable.Orientation.LEFT_RIGHT,
-                intArrayOf(Color.rgb(5, 91, 218), Color.rgb(28, 131, 250))
+                intArrayOf(Color.rgb(7, 94, 220), Color.rgb(35, 143, 250))
             ).apply {
-                setCornerRadii(floatArrayOf(0f, 0f, dp(24).toFloat(), dp(24).toFloat(), dp(24).toFloat(), dp(24).toFloat(), 0f, 0f))
+                cornerRadii = floatArrayOf(0f, 0f, dp(24).toFloat(), dp(24).toFloat(),
+                    dp(24).toFloat(), dp(24).toFloat(), 0f, 0f)
             }
         }
-        headerTitle = makeText("SD Micro Tool", 23f, Color.WHITE, true)
-        headerSubtitle = makeText("Ổ lưu trữ phụ • Tải thẳng vào SD", 12f, Color.rgb(225, 239, 255))
-        top.addView(headerTitle)
-        top.addView(headerSubtitle, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
-        shell.addView(top, LinearLayout.LayoutParams(-1, -2))
 
-        val scroll = ScrollView(this).apply { isFillViewport = true }
+        val logo = ImageView(this).apply {
+            setImageResource(R.drawable.sd_micro_tool_logo)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            contentDescription = "Logo SD Micro Tool"
+        }
+        header.addView(logo, LinearLayout.LayoutParams(dp(54), dp(54)))
+
+        val titleBlock = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(11), 0, 0, 0)
+        }
+        titleBlock.addView(makeText("SD Micro Tool", 20f, Color.WHITE, true))
+        headerSubtitle = makeText("Bộ nhớ phụ thông minh • SD Card", 11f, Color.rgb(226, 240, 255))
+        titleBlock.addView(headerSubtitle, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(3) })
+        header.addView(titleBlock, LinearLayout.LayoutParams(0, -2, 1f))
+
+        val statusChip = makeText("SD", 12f, Color.WHITE, true).apply {
+            gravity = Gravity.CENTER
+            setPadding(dp(12), dp(7), dp(12), dp(7))
+            background = rounded(Color.rgb(47, 155, 255), 30, Color.rgb(128, 197, 255))
+        }
+        header.addView(statusChip)
+        shell.addView(header, LinearLayout.LayoutParams(-1, -2))
+
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            clipToPadding = false
+        }
         page = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(18), dp(16), dp(20))
+            setPadding(dp(16), dp(17), dp(16), dp(18))
         }
         scroll.addView(page)
         shell.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
@@ -92,21 +139,24 @@ class MainActivity : Activity() {
         val nav = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(dp(6), dp(7), dp(6), dp(7))
-            setBackgroundColor(Color.rgb(13, 27, 49))
+            setPadding(dp(8), dp(7), dp(8), dp(7))
+            setBackgroundColor(Color.WHITE)
+            elevation = dp(10).toFloat()
         }
-        val labels = listOf("⌂\nTrang chủ", "↓\nTải về", "▤\nTệp", "⚙\nCài đặt")
+        val labels = listOf("⌂\nTổng quan", "↓\nTải về", "▤\nTệp SD", "⚙\nCài đặt")
+        val items = mutableListOf<TextView>()
         labels.forEachIndexed { index, label ->
             val item = makeText(label, 11f, muted, true).apply {
                 gravity = Gravity.CENTER
-                setPadding(dp(4), dp(5), dp(4), dp(5))
+                setPadding(dp(4), dp(7), dp(4), dp(7))
                 isClickable = true
                 isFocusable = true
                 setOnClickListener { showTab(index) }
             }
-            tabButtons.add(item)
-            nav.addView(item, LinearLayout.LayoutParams(0, dp(52), 1f))
+            items.add(item)
+            nav.addView(item, LinearLayout.LayoutParams(0, dp(54), 1f))
         }
+        navItems = items
         shell.addView(nav, LinearLayout.LayoutParams(-1, -2))
         setContentView(shell)
     }
@@ -114,18 +164,16 @@ class MainActivity : Activity() {
     private fun showTab(tab: Int) {
         currentTab = tab
         page.removeAllViews()
-        val titles = listOf("Tổng quan bộ nhớ", "Tải trực tiếp vào SD", "Quản lý tệp trên SD", "Cài đặt & quyền")
         val subtitles = listOf(
-            "Theo dõi riêng bộ nhớ trong và thẻ SD",
-            "Tệp tải và file tạm được ghi vào SD",
-            "Duyệt đúng thư mục thẻ nhớ đã cấp quyền",
-            "Quản lý nơi lưu trữ và thông tin ứng dụng"
+            "Quản lý bộ nhớ trong và thẻ SD",
+            "Tải tệp trực tiếp vào thẻ nhớ",
+            "Duyệt và quản lý tệp đã lưu trên SD",
+            "Thiết lập lưu trữ và cập nhật ứng dụng"
         )
-        headerTitle.text = titles[tab]
         headerSubtitle.text = subtitles[tab]
-        tabButtons.forEachIndexed { index, view ->
-            view.setTextColor(if (index == tab) Color.WHITE else muted)
-            view.background = if (index == tab) rounded(blue, 14) else null
+        navItems.forEachIndexed { index, item ->
+            item.setTextColor(if (index == tab) blue else muted)
+            item.background = if (index == tab) rounded(Color.rgb(232, 242, 255), 14) else null
         }
         when (tab) {
             0 -> buildHome()
@@ -136,177 +184,299 @@ class MainActivity : Activity() {
     }
 
     private fun buildHome() {
-        sectionTitle("Bộ nhớ thiết bị", "Số liệu hệ thống, không gộp hai ổ")
-        addStorageCard("Bộ nhớ trong", getInternalStats(), Color.rgb(48, 139, 255),
-            "Android, ứng dụng đã cài và dữ liệu hệ thống")
-        addStorageCard("Thẻ SD", getSelectedSdStats(), green,
-            if (selectedTree == null) "Chưa cấp quyền thư mục SD" else "Ổ lưu trữ phụ đã chọn")
+        addSectionHeading("Không gian lưu trữ", "Theo dõi dung lượng thực tế trên từng bộ nhớ")
+
+        val sd = getSelectedSdStats()
+        val sdReady = selectedTree?.let {
+            DocumentFile.fromTreeUri(this@MainActivity, it)?.canWrite()
+        } == true
 
         addCard {
-            addView(makeText("LƯU TRỮ TRỰC TIẾP", 12f, green, true))
-            val ready = selectedTree?.let { DocumentFile.fromTreeUri(this@MainActivity, it)?.canWrite() } == true
-            addView(makeText(
-                if (ready) "Thư mục SD đã sẵn sàng nhận tệp tải xuống." else "Chọn một thư mục trên thẻ SD để bắt đầu lưu trực tiếp.",
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(8, 99, 223), Color.rgb(62, 169, 255))
+            ).apply { cornerRadius = dp(22).toFloat() }
+
+            val top = LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+            val icon = makeText("SD", 25f, Color.WHITE, true).apply {
+                gravity = Gravity.CENTER
+                background = rounded(Color.rgb(65, 160, 255), 15, Color.rgb(135, 203, 255))
+            }
+            top.addView(icon, LinearLayout.LayoutParams(dp(58), dp(58)))
+            val titleBlock = LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(12), 0, 0, 0)
+            }
+            titleBlock.addView(makeText("THẺ NHỚ SD", 12f, Color.rgb(226, 241, 255), true))
+            titleBlock.addView(makeText(
+                if (sdReady) "Đã kết nối và sẵn sàng" else "Chưa chọn thư mục lưu",
                 15f, Color.WHITE, true
-            ), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
-            addView(makeText("Ứng dụng tạo file tạm ngay trong thư mục SD rồi đổi tên sau khi tải xong. Không tải file hoàn chỉnh vào bộ nhớ trong để sao chép sang SD.", 12f, muted),
-                LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
-            addActionButton(if (ready) "Mở tải xuống" else "Chọn thư mục thẻ SD", blue) {
-                if (ready) showTab(1) else chooseSdFolder()
+            ), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+            top.addView(titleBlock, LinearLayout.LayoutParams(0, -2, 1f))
+            val pill = makeText(if (sdReady) "ĐANG DÙNG" else "CHƯA SẴN SÀNG", 9f, Color.WHITE, true).apply {
+                gravity = Gravity.CENTER
+                setPadding(dp(8), dp(7), dp(8), dp(7))
+                background = rounded(Color.argb(60, 255, 255, 255), 30)
+            }
+            top.addView(pill)
+            addView(top)
+
+            if (sd != null && sd[0] > 0) {
+                val total = sd[0]
+                val free = sd[1]
+                val used = (total - free).coerceAtLeast(0)
+                addView(makeText(formatBytes(free), 31f, Color.WHITE, true),
+                    LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(18) })
+                addView(makeText("CÒN TRỐNG TRÊN THẺ SD", 10f, Color.rgb(226, 241, 255), true),
+                    LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(2) })
+                val bar = ProgressBar(this@MainActivity, null, android.R.attr.progressBarStyleHorizontal).apply {
+                    max = 100
+                    progress = percentage(used, total)
+                    progressTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
+                    progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.argb(75, 255, 255, 255))
+                }
+                addView(bar, LinearLayout.LayoutParams(-1, dp(8)).apply { topMargin = dp(14) })
+                addView(makeText(formatBytes(used) + " đã dùng  •  " + formatBytes(total) + " tổng dung lượng",
+                    11f, Color.rgb(230, 243, 255)), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(9) })
+                if (free < 256L * 1024L * 1024L) {
+                    addView(makeText("Thẻ SD sắp hết dung lượng. Hãy giải phóng bớt tệp trước khi tải tiếp.",
+                        11f, Color.WHITE, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+                }
+            } else {
+                addView(makeText("Chọn thẻ SD để bắt đầu", 21f, Color.WHITE, true),
+                    LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(18) })
+                addView(makeText("Dữ liệu tải xuống sẽ được ghi trực tiếp vào thư mục SD bạn cấp quyền.",
+                    12f, Color.rgb(230, 243, 255)), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
+            }
+            addActionButton(if (sdReady) "Mở khu vực tải xuống" else "Chọn thẻ SD ngay", Color.WHITE, blue) {
+                if (sdReady) showTab(1) else chooseSdFolder()
             }
         }
+
+        addSectionHeading("Bộ nhớ trên điện thoại", "Hai vùng lưu trữ được hiển thị riêng biệt")
+        addStorageCard("Bộ nhớ trong", getInternalStats(), blue, "Android, ứng dụng và dữ liệu hệ thống", "📱")
+        addStorageCard("Thẻ SD", sd, green, "Thư mục lưu trữ ngoài đã được cấp quyền", "💾")
+
+        addSectionHeading("Truy cập nhanh", "Các thao tác thường dùng")
+        val quick = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        quick.addView(quickAction("↓", "Tải vào SD", "Ghi tệp trực tiếp", blue) { showTab(1) },
+            LinearLayout.LayoutParams(0, -2, 1f).apply { rightMargin = dp(6) })
+        quick.addView(quickAction("▤", "Quản lý tệp", "Duyệt thẻ nhớ", green) { showTab(2) },
+            LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(6) })
+        page.addView(quick, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) })
+
         addCard {
-            addView(makeText("ỨNG DỤNG & GAME", 15f, Color.WHITE, true))
-            addView(makeText("Game vẫn cài và chạy theo Android. Ứng dụng này không thể tự chuyển cache riêng của Roblox hoặc dữ liệu riêng của game khác nếu Android/game không cấp quyền.", 12f, muted),
-                LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
-        }
-        addCard {
-            addView(makeText("NGUYÊN TẮC DUNG LƯỢNG", 15f, Color.WHITE, true))
-            addView(makeText("APK của SD Micro Tool vẫn chiếm một ít bộ nhớ trong sau khi cài. Tệp tải xuống được ghi lên SD sẽ được tính vào thẻ SD, không được báo là dung lượng trong đã giảm.", 12f, muted),
-                LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
+            addView(makeText("LƯU Ý VỀ ỨNG DỤNG VÀ GAME", 13f, ink, true))
+            addView(makeText(
+                "SD Micro Tool có thể ghi tài nguyên do chính ứng dụng tải vào SD. Android vẫn quản lý dữ liệu riêng của Roblox, Free Fire, Liên Quân và các ứng dụng khác; không thể tự ép chúng chuyển cache nếu game hoặc hệ thống không hỗ trợ.",
+                12f, muted
+            ), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
         }
     }
 
-    private fun addStorageCard(title: String, stats: LongArray?, tint: Int, description: String) {
+    private fun addStorageCard(title: String, stats: LongArray?, tint: Int, description: String, iconText: String) {
         addCard {
-            addView(makeText(title, 15f, Color.WHITE, true))
-            addView(makeText(description, 11f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(3) })
+            val head = LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+            val icon = makeText(iconText, 20f, tint, true).apply {
+                gravity = Gravity.CENTER
+                background = rounded(Color.rgb(239, 246, 255), 13)
+            }
+            head.addView(icon, LinearLayout.LayoutParams(dp(46), dp(46)))
+            val block = LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(10), 0, 0, 0)
+            }
+            block.addView(makeText(title, 15f, ink, true))
+            block.addView(makeText(description, 10f, muted),
+                LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(3) })
+            head.addView(block, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(head)
+
             if (stats == null || stats.size < 2 || stats[0] <= 0L) {
-                addView(makeText("Chưa đọc được dung lượng. Kiểm tra thẻ và quyền truy cập.", 13f, Color.rgb(255, 202, 114)),
-                    LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
+                addView(makeText("Chưa đọc được dung lượng. Hãy kiểm tra thẻ và quyền truy cập.",
+                    12f, orange, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(13) })
             } else {
                 val total = stats[0]
                 val free = stats[1]
                 val used = (total - free).coerceAtLeast(0L)
-                addView(makeText(formatBytes(used) + " đã dùng / " + formatBytes(total), 19f, Color.WHITE, true),
-                    LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
-                val progress = ProgressBar(this@MainActivity, null, android.R.attr.progressBarStyleHorizontal).apply {
+                addView(makeText(formatBytes(used) + " / " + formatBytes(total), 19f, ink, true),
+                    LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
+                val bar = ProgressBar(this@MainActivity, null, android.R.attr.progressBarStyleHorizontal).apply {
                     max = 100
-                    this.progress = ((used.toDouble() / total.toDouble()) * 100.0).toInt().coerceIn(0, 100)
+                    progress = percentage(used, total)
                     progressTintList = android.content.res.ColorStateList.valueOf(tint)
-                    progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(47, 64, 89))
+                    progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(232, 238, 248))
                 }
-                addView(progress, LinearLayout.LayoutParams(-1, dp(9)).apply { topMargin = dp(9) })
-                addView(makeText("Còn trống: " + formatBytes(free), 12f, muted),
+                addView(bar, LinearLayout.LayoutParams(-1, dp(8)).apply { topMargin = dp(9) })
+                addView(makeText("Còn trống: " + formatBytes(free), 11f, muted),
                     LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
             }
         }
     }
 
     private fun buildDownloadPage() {
-        sectionTitle("Tải thẳng vào thẻ SD", "Không lưu file hoàn chỉnh vào bộ nhớ trong trước")
+        addSectionHeading("Tải trực tiếp vào SD", "Không tải hoàn chỉnh vào bộ nhớ trong rồi sao chép")
+
+        val folder = selectedTree?.let { DocumentFile.fromTreeUri(this@MainActivity, it) }
         addCard {
-            addView(makeText("THƯ MỤC NHẬN", 11f, green, true))
-            val folder = selectedTree?.let { DocumentFile.fromTreeUri(this@MainActivity, it) }
-            addView(makeText(folder?.name ?: "Chưa chọn thư mục SD", 16f, Color.WHITE, true),
-                LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
-            addActionButton("Chọn / đổi thư mục SD", Color.rgb(40, 91, 155)) { chooseSdFolder() }
+            val row = LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+            val folderIcon = makeText("▣", 24f, blue, true).apply {
+                gravity = Gravity.CENTER
+                background = rounded(Color.rgb(233, 243, 255), 14)
+            }
+            row.addView(folderIcon, LinearLayout.LayoutParams(dp(48), dp(48)))
+            val details = LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(11), 0, 0, 0)
+            }
+            details.addView(makeText("THƯ MỤC NHẬN", 10f, muted, true))
+            details.addView(makeText(folder?.name ?: "Chưa chọn thư mục SD", 14f, ink, true),
+                LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+            row.addView(details, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(row)
+            addActionButton("Chọn / đổi thư mục SD", Color.rgb(235, 244, 255), blue) { chooseSdFolder() }
         }
-        val url = EditText(this).apply {
-            hint = "Dán liên kết HTTPS của tệp"
-            setHintTextColor(Color.rgb(135, 157, 187))
-            setTextColor(Color.WHITE)
-            textSize = 14f
-            setSingleLine(true)
-            inputType = android.text.InputType.TYPE_TEXT_VARIATION_URI
-            background = rounded(Color.rgb(27, 45, 72), 14)
-            setPadding(dp(14), dp(13), dp(14), dp(13))
-        }
-        val filename = EditText(this).apply {
-            hint = "Tên tệp (để trống để tự nhận diện)"
-            setHintTextColor(Color.rgb(135, 157, 187))
-            setTextColor(Color.WHITE)
-            textSize = 14f
-            setSingleLine(true)
-            background = rounded(Color.rgb(27, 45, 72), 14)
-            setPadding(dp(14), dp(13), dp(14), dp(13))
-        }
+
+        val urlField = createField("Dán liên kết HTTPS của tệp", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI)
+        val nameField = createField("Tên tệp (để trống để tự nhận diện)", InputType.TYPE_CLASS_TEXT)
+
         addCard {
-            addView(makeText("LIÊN KẾT TẢI", 11f, muted, true))
-            addView(url, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(8) })
-            addView(makeText("TÊN TỆP", 11f, muted, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
-            addView(filename, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(8) })
-            addActionButton("↓  TẢI TRỰC TIẾP VÀO SD", blue) {
-                val link = url.text.toString().trim()
-                val name = filename.text.toString().trim()
-                if (selectedTree == null) {
-                    toast("Hãy chọn thư mục thẻ SD trước")
-                    chooseSdFolder()
-                } else if (!link.startsWith("https://", true)) {
-                    toast("Chỉ hỗ trợ liên kết HTTPS an toàn")
-                } else {
-                    val intent = Intent(this@MainActivity, DownloadService::class.java).apply {
-                        action = DownloadService.ACTION_DOWNLOAD
-                        putExtra(DownloadService.EXTRA_URL, link)
-                        putExtra(DownloadService.EXTRA_TREE, selectedTree.toString())
-                        putExtra(DownloadService.EXTRA_NAME, name)
+            addView(makeText("LIÊN KẾT TẢI", 10f, muted, true))
+            addView(urlField, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(7) })
+            addView(makeText("TÊN TỆP", 10f, muted, true),
+                LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(15) })
+            addView(nameField, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(7) })
+            addActionButton("↓  TẢI THẲNG VÀO THẺ SD", blue, Color.WHITE) {
+                val link = urlField.text.toString().trim()
+                val fileName = nameField.text.toString().trim()
+                when {
+                    selectedTree == null -> {
+                        AlertDialog.Builder(this@MainActivity)
+                            .setTitle("Chưa chọn thẻ SD")
+                            .setMessage("Chọn thư mục trên thẻ SD trước khi tải.")
+                            .setPositiveButton("Chọn SD") { _, _ -> chooseSdFolder() }
+                            .setNegativeButton("Đóng", null)
+                            .show()
                     }
-                    try {
-                        if (Build.VERSION.SDK_INT >= 26) startForegroundService(intent) else startService(intent)
-                        toast("Đã bắt đầu tải. File tạm được ghi trên SD.")
-                        url.text.clear()
-                        filename.text.clear()
-                    } catch (e: Exception) {
-                        toast("Không thể bắt đầu tải: " + (e.message ?: "lỗi hệ thống"))
+                    !link.startsWith("https://", true) -> toast("Chỉ hỗ trợ liên kết HTTPS an toàn.")
+                    else -> {
+                        val stats = getSelectedSdStats()
+                        if (stats != null && stats[1] < 10L * 1024L * 1024L) {
+                            AlertDialog.Builder(this@MainActivity)
+                                .setTitle("Thẻ SD không đủ dung lượng")
+                                .setMessage("Thẻ SD còn " + formatBytes(stats[1]) + ". Hãy giải phóng dung lượng trước khi tải tiếp. Tệp sẽ không tự chuyển sang bộ nhớ trong.")
+                                .setPositiveButton("Đóng", null)
+                                .show()
+                        } else {
+                            val intent = Intent(this@MainActivity, DownloadService::class.java).apply {
+                                action = DownloadService.ACTION_DOWNLOAD
+                                putExtra(DownloadService.EXTRA_URL, link)
+                                putExtra(DownloadService.EXTRA_TREE, selectedTree.toString())
+                                putExtra(DownloadService.EXTRA_NAME, fileName)
+                            }
+                            try {
+                                if (Build.VERSION.SDK_INT >= 26) startForegroundService(intent) else startService(intent)
+                                toast("Đã bắt đầu tải. File tạm được ghi trên thẻ SD.")
+                                urlField.text.clear()
+                                nameField.text.clear()
+                            } catch (e: Exception) {
+                                toast("Không thể bắt đầu tải: " + (e.message ?: "lỗi hệ thống"))
+                            }
+                        }
                     }
                 }
             }
         }
+
         addCard {
-            addView(makeText("CÁCH LƯU", 14f, Color.WHITE, true))
-            addView(makeText("1. Chọn đúng thư mục thuộc thẻ SD.\n2. Dán liên kết HTTPS trực tiếp đến tệp.\n3. File .part được tạo trên SD và đổi tên khi hoàn tất.\n4. Nếu tải lỗi, file tạm vẫn ở SD để bạn kiểm tra hoặc xóa.", 12f, muted),
-                LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
-            addView(makeText("Đây là trình tải tệp của ứng dụng, không tự thay đổi vị trí cache riêng của Roblox hoặc game khác.", 12f, Color.rgb(255, 202, 114)),
-                LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(9) })
+            addView(makeText("CÁCH HOẠT ĐỘNG", 13f, ink, true))
+            addInfoRow("1", "Tệp tạm .part được tạo trực tiếp trên SD.")
+            addInfoRow("2", "Dữ liệu tải được ghi theo luồng, không tạo bản tải hoàn chỉnh trong bộ nhớ trong.")
+            addInfoRow("3", "Khi hoàn tất, ứng dụng đổi tên tệp ngay trên SD.")
+            addInfoRow("4", "Nếu thẻ đầy hoặc bị rút, tải sẽ báo lỗi; file tạm vẫn nằm trên SD nếu thẻ còn truy cập được.")
         }
     }
 
     private fun buildFilesPage() {
-        sectionTitle("Tệp trên thẻ SD", "Chỉ hiển thị thư mục bạn đã cấp quyền")
+        addSectionHeading("Tệp trên thẻ SD", "Chỉ duyệt thư mục bạn đã chủ động cấp quyền")
         val root = selectedTree?.let { DocumentFile.fromTreeUri(this@MainActivity, it) }
         if (root == null) {
             addCard {
-                addView(makeText("Chưa chọn thư mục SD", 16f, Color.WHITE, true))
-                addActionButton("Chọn thư mục SD", blue) { chooseSdFolder() }
+                addView(makeText("Chưa chọn thư mục thẻ SD", 16f, ink, true))
+                addView(makeText("Chọn thư mục trên SD để xem và quản lý các tệp do bạn lưu tại đó.",
+                    12f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
+                addActionButton("Chọn thư mục SD", blue, Color.WHITE) { chooseSdFolder() }
             }
             return
         }
         if (currentFolder == null) currentFolder = root
         addCard {
-            addView(makeText("THƯ MỤC HIỆN TẠI", 11f, green, true))
-            addView(makeText(currentFolder?.name ?: root.name ?: "Thẻ SD", 15f, Color.WHITE, true),
-                LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
-            addActionButton(if (currentFolder == root) "Về thư mục gốc SD" else "Quay về thư mục gốc", blue) {
+            addView(makeText("VỊ TRÍ ĐANG MỞ", 10f, muted, true))
+            addView(makeText(currentFolder?.name ?: root.name ?: "Thẻ SD", 15f, ink, true),
+                LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
+            addActionButton(if (currentFolder == root) "Làm mới thư mục" else "Quay về thư mục gốc", Color.rgb(235, 244, 255), blue) {
                 currentFolder = root
                 showTab(2)
             }
         }
+
         val items = currentFolder?.listFiles()?.sortedWith(
-            compareByDescending<DocumentFile> { it.isDirectory }.thenBy { it.name?.lowercase(Locale.ROOT) }
+            compareByDescending<DocumentFile> { it.isDirectory }
+                .thenBy { it.name?.lowercase(Locale.ROOT) }
         ) ?: emptyList()
+
         if (items.isEmpty()) {
-            addCard { addView(makeText("Thư mục này chưa có tệp.", 13f, muted)) }
+            addCard {
+                addView(makeText("Thư mục đang trống", 15f, ink, true))
+                addView(makeText("Tệp tải về sẽ xuất hiện tại đây.", 12f, muted),
+                    LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
+            }
         } else {
             items.forEach { item ->
                 addCard {
-                    val symbol = if (item.isDirectory) "📁" else "📄"
-                    addView(makeText(symbol + "  " + (item.name ?: "Không tên"), 14f, Color.WHITE, true))
-                    addView(makeText(if (item.isDirectory) "Thư mục" else formatBytes(item.length()), 11f, muted),
-                        LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+                    val row = LinearLayout(this@MainActivity).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        gravity = Gravity.CENTER_VERTICAL
+                    }
+                    val icon = makeText(if (item.isDirectory) "📁" else "📄", 20f, blue, true).apply {
+                        gravity = Gravity.CENTER
+                        background = rounded(Color.rgb(239, 246, 255), 12)
+                    }
+                    row.addView(icon, LinearLayout.LayoutParams(dp(43), dp(43)))
+                    val details = LinearLayout(this@MainActivity).apply {
+                        orientation = LinearLayout.VERTICAL
+                        setPadding(dp(10), 0, 0, 0)
+                    }
+                    details.addView(makeText(item.name ?: "Không tên", 13f, ink, true))
+                    details.addView(makeText(
+                        if (item.isDirectory) "Thư mục" else formatBytes(item.length()),
+                        10f, muted
+                    ), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+                    row.addView(details, LinearLayout.LayoutParams(0, -2, 1f))
+                    addView(row)
                     if (item.isDirectory) {
-                        addActionButton("Mở thư mục", Color.rgb(40, 91, 155)) {
+                        addActionButton("Mở thư mục", Color.rgb(235, 244, 255), blue) {
                             currentFolder = item
                             showTab(2)
                         }
                     } else {
-                        addActionButton("Xóa tệp này", Color.rgb(123, 55, 65)) {
+                        addActionButton("Xóa tệp này", Color.rgb(255, 239, 239), red) {
                             AlertDialog.Builder(this@MainActivity)
-                                .setTitle("Xóa tệp?")
-                                .setMessage("Bạn có chắc muốn xóa " + (item.name ?: "tệp này") + " khỏi thẻ SD không?")
+                                .setTitle("Xóa tệp khỏi SD?")
+                                .setMessage("Bạn có chắc muốn xóa " + (item.name ?: "tệp này") + " không?")
                                 .setNegativeButton("Hủy", null)
                                 .setPositiveButton("Xóa") { _, _ ->
                                     val ok = item.delete()
-                                    toast(if (ok) "Đã xóa tệp khỏi SD" else "Không thể xóa tệp")
+                                    toast(if (ok) "Đã xóa tệp khỏi SD." else "Không thể xóa tệp.")
                                     showTab(2)
                                 }.show()
                         }
@@ -317,110 +487,90 @@ class MainActivity : Activity() {
     }
 
     private fun buildSettingsPage() {
-        sectionTitle("Cài đặt", "Quyền truy cập do Android kiểm soát")
+        addSectionHeading("Cài đặt ứng dụng", "Quản lý thẻ nhớ, quyền truy cập và cập nhật")
+        val selectedFolder = selectedTree?.let { DocumentFile.fromTreeUri(this@MainActivity, it)?.name }
         addCard {
-            addView(makeText("THƯ MỤC LƯU MẶC ĐỊNH", 11f, green, true))
-            addView(makeText(selectedTree?.let { DocumentFile.fromTreeUri(this@MainActivity, it)?.name } ?: "Chưa chọn", 13f, Color.WHITE),
-                LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
-            addActionButton("Chọn thư mục thẻ SD", blue) { chooseSdFolder() }
-            addActionButton("Gỡ quyền thư mục đã chọn", Color.rgb(123, 55, 65)) {
-                selectedTree?.let { uri ->
-                    try {
-                        contentResolver.releasePersistableUriPermission(uri,
-                            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-                    } catch (_: Exception) {}
-                }
-                prefs.edit().remove(PREF_TREE_URI).apply()
-                selectedTree = null
-                currentFolder = null
-                toast("Đã gỡ quyền thư mục")
-                showTab(3)
+            addView(makeText("LƯU TRỮ MẶC ĐỊNH", 10f, muted, true))
+            addView(makeText(selectedFolder ?: "Chưa chọn thẻ SD", 15f, ink, true),
+                LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
+            addActionButton("Chọn / đổi thư mục SD", blue, Color.WHITE) { chooseSdFolder() }
+            addActionButton("Gỡ quyền thư mục SD", Color.rgb(255, 239, 239), red) {
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle("Gỡ quyền thư mục?")
+                    .setMessage("Ứng dụng sẽ không thể lưu vào thư mục SD hiện tại cho tới khi bạn chọn lại.")
+                    .setNegativeButton("Hủy", null)
+                    .setPositiveButton("Gỡ quyền") { _, _ ->
+                        selectedTree?.let { uri ->
+                            try {
+                                contentResolver.releasePersistableUriPermission(
+                                    uri,
+                                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                                )
+                            } catch (_: Exception) {}
+                        }
+                        prefs.edit().remove(PREF_TREE_URI).apply()
+                        selectedTree = null
+                        currentFolder = null
+                        showTab(3)
+                    }.show()
             }
         }
+
         addCard {
-            addView(makeText("GIỚI HẠN ANDROID", 15f, Color.WHITE, true))
-            addView(makeText("Ứng dụng chỉ ghi vào thư mục SD bạn cấp quyền. Android vẫn giữ APK và dữ liệu riêng của ứng dụng trong vùng riêng. Không thể ép game khác đổi nơi lưu cache hoặc di chuyển dữ liệu riêng của chúng.", 12f, muted),
-                LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
-        }
-        addCard {
-            addView(makeText("PHIÊN BẢN ỨNG DỤNG", 14f, Color.WHITE, true))
-            addView(makeText("SD Micro Tool • Phiên bản " + packageManager.getPackageInfo(packageName, 0).versionName, 12f, muted),
-                LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
-            addActionButton("Kiểm tra cập nhật", blue) {
+            addView(makeText("CẬP NHẬT SD MICRO TOOL", 14f, ink, true))
+            addView(makeText("Kiểm tra phiên bản mới từ GitHub Releases. Trước khi mở trình cài đặt, ứng dụng kiểm tra package và chữ ký APK.",
+                12f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
+            addActionButton("Kiểm tra cập nhật", blue, Color.WHITE) {
                 AppUpdateManager(this@MainActivity).checkForUpdate(showNoUpdate = true)
             }
+            val versionName = try {
+                packageManager.getPackageInfo(packageName, 0).versionName ?: "Không rõ"
+            } catch (_: Exception) { "Không rõ" }
+            addView(makeText("Phiên bản hiện tại: " + versionName, 11f, muted),
+                LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+        }
+
+        addCard {
+            addView(makeText("QUYỀN RIÊNG TƯ & AN TOÀN", 14f, ink, true))
+            addView(makeText("Ứng dụng chỉ truy cập thư mục bạn cấp quyền. Không tự ý đọc dữ liệu riêng của game hoặc ứng dụng khác. Chức năng đồng bộ đám mây tạm thời sẽ chỉ hoạt động khi máy chủ trung gian được cấu hình an toàn.",
+                12f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
+        }
+
+        addCard {
+            addView(makeText("SD MICRO TOOL", 13f, blue, true))
+            addView(makeText("Phát triển bởi Dev Nero\nGiao diện tiếng Việt • Android 11 trở lên",
+                11f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
         }
     }
 
-    private fun chooseSdFolder() {
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
-                Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
-        }
-        @Suppress("DEPRECATION")
-        startActivityForResult(intent, REQUEST_SD_TREE)
-    }
-
-    @Deprecated("Uses SAF result callback for Android compatibility")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != REQUEST_SD_TREE || resultCode != RESULT_OK) return
-        val uri = data?.data ?: return
-        if (!isRemovableSdTree(uri)) {
-            toast("Hãy chọn thư mục trên thẻ SD, không phải bộ nhớ trong.")
-            return
-        }
-        try {
-            val flags = data.flags and
-                (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-            contentResolver.takePersistableUriPermission(uri, flags)
-            selectedTree = uri
-            currentFolder = DocumentFile.fromTreeUri(this, uri)
-            prefs.edit().putString(PREF_TREE_URI, uri.toString()).apply()
-            toast("Đã chọn thẻ SD làm nơi lưu")
-            showTab(currentTab)
-        } catch (e: Exception) {
-            toast("Không thể cấp quyền thư mục: " + (e.message ?: "lỗi"))
+    private fun createField(hintText: String, inputTypeValue: Int): EditText {
+        return EditText(this).apply {
+            hint = hintText
+            setHintTextColor(Color.rgb(139, 155, 179))
+            setTextColor(ink)
+            textSize = 13f
+            setSingleLine(true)
+            inputType = inputTypeValue
+            background = rounded(Color.rgb(247, 250, 255), 13, line)
+            setPadding(dp(14), dp(10), dp(14), dp(10))
         }
     }
 
-    private fun isRemovableSdTree(uri: Uri): Boolean {
-        return try {
-            val volumeId = DocumentsContract.getTreeDocumentId(uri).substringBefore(':')
-            if (volumeId.equals("primary", true)) return false
-            val manager = getSystemService(Context.STORAGE_SERVICE) as StorageManager
-            manager.storageVolumes.any { it.isRemovable && it.uuid?.equals(volumeId, true) == true }
-        } catch (_: Exception) { false }
-    }
-
-    private fun getInternalStats(): LongArray? {
-        return try {
-            val stat = StatFs(Environment.getDataDirectory().absolutePath)
-            longArrayOf(stat.totalBytes, stat.availableBytes)
-        } catch (_: Exception) { null }
-    }
-
-    private fun getSelectedSdStats(): LongArray? {
-        val uri = selectedTree ?: return null
-        return try {
-            val volumeId = DocumentsContract.getTreeDocumentId(uri).substringBefore(':')
-            val manager = getSystemService(Context.STORAGE_SERVICE) as StorageManager
-            val volume = manager.storageVolumes.firstOrNull {
-                it.isRemovable && it.uuid?.equals(volumeId, true) == true
-            } ?: return null
-            if (Build.VERSION.SDK_INT < 30) return null
-            val directory = volume.directory ?: return null
-            val stat = StatFs(directory.absolutePath)
-            longArrayOf(stat.totalBytes, stat.availableBytes)
-        } catch (_: Exception) { null }
+    private fun addSectionHeading(title: String, subtitle: String) {
+        page.addView(makeText(title, 20f, ink, true))
+        page.addView(makeText(subtitle, 11f, muted),
+            LinearLayout.LayoutParams(-1, -2).apply {
+                topMargin = dp(4)
+                bottomMargin = dp(13)
+            })
     }
 
     private fun addCard(content: LinearLayout.() -> Unit) {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(15), dp(16), dp(15))
-            background = rounded(panel, 18, Color.rgb(39, 57, 84))
+            setPadding(dp(15), dp(14), dp(15), dp(14))
+            background = rounded(Color.WHITE, 19, line)
+            elevation = dp(2).toFloat()
         }
         val previous = activeCard
         activeCard = card
@@ -429,25 +579,44 @@ class MainActivity : Activity() {
         page.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) })
     }
 
-    private fun sectionTitle(title: String, subtitle: String) {
-        page.addView(makeText(title, 19f, Color.WHITE, true))
-        page.addView(makeText(subtitle, 12f, muted), LinearLayout.LayoutParams(-1, -2).apply {
-            topMargin = dp(4)
-            bottomMargin = dp(13)
-        })
-    }
-
-    private fun addActionButton(label: String, color: Int, action: () -> Unit) {
-        val button = makeText(label, 13f, Color.WHITE, true).apply {
+    private fun addActionButton(label: String, fillColor: Int, labelColor: Int, action: () -> Unit) {
+        val button = makeText(label, 12f, labelColor, true).apply {
             gravity = Gravity.CENTER
-            setPadding(dp(12), dp(12), dp(12), dp(12))
-            background = rounded(color, 13)
+            setPadding(dp(13), dp(12), dp(13), dp(12))
+            background = rounded(fillColor, 13, if (fillColor == Color.WHITE) Color.rgb(215, 231, 255) else null)
             isClickable = true
             isFocusable = true
             setOnClickListener { action() }
         }
-        val params = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(11) }
-        (activeCard ?: page).addView(button, params)
+        (activeCard ?: page).addView(button, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+    }
+
+    private fun addInfoRow(number: String, message: String) {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.TOP
+            setPadding(0, dp(7), 0, dp(7))
+        }
+        row.addView(makeText(number, 11f, blue, true), LinearLayout.LayoutParams(dp(23), -2))
+        row.addView(makeText(message, 11f, muted), LinearLayout.LayoutParams(0, -2, 1f))
+        activeCard?.addView(row)
+    }
+
+    private fun quickAction(iconText: String, title: String, subtitle: String, tint: Int, action: () -> Unit): View {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(13), dp(13), dp(13), dp(13))
+            background = rounded(Color.WHITE, 17, line)
+            elevation = dp(1).toFloat()
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { action() }
+            addView(makeText(iconText, 25f, tint, true))
+            addView(makeText(title, 13f, ink, true),
+                LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
+            addView(makeText(subtitle, 10f, muted),
+                LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(3) })
+        }
     }
 
     private fun rounded(color: Int, radius: Int, stroke: Int? = null): GradientDrawable {
@@ -468,6 +637,94 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun chooseSdFolder() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            addFlags(
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                    Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+            )
+        }
+        @Suppress("DEPRECATION")
+        startActivityForResult(intent, REQUEST_SD_TREE)
+    }
+
+    @Deprecated("Uses SAF result callback for Android compatibility")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQUEST_SD_TREE || resultCode != RESULT_OK) return
+        val uri = data?.data ?: return
+        if (!isRemovableSdTree(uri)) {
+            toast("Hãy chọn thư mục trên thẻ SD, không phải bộ nhớ trong.")
+            return
+        }
+        try {
+            val flags = data.flags and (
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+            contentResolver.takePersistableUriPermission(uri, flags)
+            selectedTree = uri
+            currentFolder = DocumentFile.fromTreeUri(this, uri)
+            prefs.edit().putString(PREF_TREE_URI, uri.toString()).apply()
+            toast("Đã chọn thẻ SD làm nơi lưu.")
+            showTab(currentTab)
+        } catch (e: Exception) {
+            toast("Không thể cấp quyền thư mục: " + (e.message ?: "lỗi"))
+        }
+    }
+
+    private fun isRemovableSdTree(uri: Uri): Boolean {
+        return try {
+            val volumeId = DocumentsContract.getTreeDocumentId(uri).substringBefore(':')
+            if (volumeId.equals("primary", true)) return false
+            val manager = getSystemService(Context.STORAGE_SERVICE) as StorageManager
+            manager.storageVolumes.any {
+                it.isRemovable && it.uuid?.equals(volumeId, true) == true
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun hasRemovableSdCard(): Boolean {
+        return try {
+            val manager = getSystemService(Context.STORAGE_SERVICE) as StorageManager
+            manager.storageVolumes.any { it.isRemovable && it.state == Environment.MEDIA_MOUNTED }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun getInternalStats(): LongArray? {
+        return try {
+            val stat = StatFs(Environment.getDataDirectory().absolutePath)
+            longArrayOf(stat.totalBytes, stat.availableBytes)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun getSelectedSdStats(): LongArray? {
+        val uri = selectedTree ?: return null
+        return try {
+            val volumeId = DocumentsContract.getTreeDocumentId(uri).substringBefore(':')
+            val manager = getSystemService(Context.STORAGE_SERVICE) as StorageManager
+            val volume = manager.storageVolumes.firstOrNull {
+                it.isRemovable && it.uuid?.equals(volumeId, true) == true
+            } ?: return null
+            val directory = volume.directory ?: return null
+            val stat = StatFs(directory.absolutePath)
+            longArrayOf(stat.totalBytes, stat.availableBytes)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun percentage(used: Long, total: Long): Int {
+        if (total <= 0L) return 0
+        return ((used.toDouble() / total.toDouble()) * 100.0).toInt().coerceIn(0, 100)
+    }
+
     private fun formatBytes(bytes: Long): String {
         if (bytes < 0L) return "—"
         val units = arrayOf("B", "KB", "MB", "GB", "TB")
@@ -477,7 +734,12 @@ class MainActivity : Activity() {
             value /= 1024.0
             index++
         }
-        return String.format(Locale.getDefault(), if (index == 0) "%.0f %s" else "%.2f %s", value, units[index])
+        return String.format(
+            Locale.getDefault(),
+            if (index == 0) "%.0f %s" else "%.2f %s",
+            value,
+            units[index]
+        )
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
