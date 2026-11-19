@@ -291,6 +291,19 @@ class SmartGameDatabase(context: Context) :
     }
 
     @Synchronized
+    fun getJobStatus(jobId: Long): String? {
+        readableDatabase.query(
+            "transfer_jobs",
+            arrayOf("status"),
+            "id=?",
+            arrayOf(jobId.toString()),
+            null, null, null, "1"
+        ).use { cursor ->
+            return if (cursor.moveToFirst()) cursor.getString(0) else null
+        }
+    }
+
+    @Synchronized
     fun getJobs(): List<GameTransferJob> {
         val jobs = mutableListOf<GameTransferJob>()
         readableDatabase.query(
