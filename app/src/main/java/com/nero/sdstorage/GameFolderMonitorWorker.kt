@@ -64,6 +64,7 @@ class GameFolderMonitorWorker(context: Context, params: WorkerParameters) :
         val modifiedAt: Long,
         val mimeType: String?
     )
+    private data class ScanResult(val files: List<ScannedFile>, val complete: Boolean)
 
     override fun doWork(): Result {
         val db = SmartGameDatabase(applicationContext)
@@ -81,8 +82,8 @@ class GameFolderMonitorWorker(context: Context, params: WorkerParameters) :
                 db.updateFolderScanTime(tracked.packageName)
                 continue
             }
-            val files = scanTree(root)
-            for (file in files) {
+            val scan = scanTree(root)
+            for (file in scan.files) {
                 if (isStopped) return Result.retry()
                 val change = db.recordSnapshot(
                     tracked.packageName, file.uri, file.name,
@@ -109,6 +110,14 @@ class GameFolderMonitorWorker(context: Context, params: WorkerParameters) :
                     }
                 }
             }
+            if (scan.complete) {
+                val seenUris = scan.files.map { it.uri.toString() }.toSet()
+                val removed = db.markMissingSnapshots(tracked.packageName, seenUris)
+                if (removed > 0) {
+                    detectedCount += removed
+                    if (samples.size < 4) samples.add("$removed tệp đã biến mất khỏi thư mục")
+                }
+            }
             db.updateFolderScanTime(tracked.packageName)
         }
 
@@ -122,20 +131,38 @@ class GameFolderMonitorWorker(context: Context, params: WorkerParameters) :
         return Result.success()
     }
 
-    private fun scanTree(root: DocumentFile): List<ScannedFile> {
+    private fun scanTree(root: DocumentFile): ScanResult {
         val queue = ArrayDeque<Pair<DocumentFile, Int>>()
         val result = mutableListOf<ScannedFile>()
+        var complete = true
         queue.add(root to 0)
-        while (queue.isNotEmpty() && result.size < MAX_FILES && !isStopped) {
+
+        while (queue.isNotEmpty() && !isStopped) {
+            if (result.size >= MAX_FILES) {
+                complete = false
+                break
+            }
             val pair = queue.removeFirst()
             val folder = pair.first
             val depth = pair.second
-            if (depth > MAX_DEPTH) continue
-            val children = try { folder.listFiles() } catch (_: Exception) { emptyArray() }
+            val children = try {
+                folder.listFiles()
+            } catch (_: Exception) {
+                complete = false
+                continue
+            }
+
             for (child in children) {
-                if (result.size >= MAX_FILES) break
+                if (result.size >= MAX_FILES) {
+                    complete = false
+                    break
+                }
                 if (child.isDirectory) {
-                    queue.add(child to depth + 1)
+                    if (depth >= MAX_DEPTH) {
+                        complete = false
+                    } else {
+                        queue.add(child to depth + 1)
+                    }
                 } else if (child.isFile) {
                     val name = child.name ?: continue
                     if (name.startsWith(".sdmt-") || name.endsWith(".part", true) ||
@@ -148,8 +175,11 @@ class GameFolderMonitorWorker(context: Context, params: WorkerParameters) :
                     )
                 }
             }
+            if (result.size >= MAX_FILES) break
         }
-        return result
+
+        if (isStopped || queue.isNotEmpty()) complete = false
+        return ScanResult(result, complete)
     }
 
     private fun isAutoCopyEligible(file: ScannedFile): Boolean {
