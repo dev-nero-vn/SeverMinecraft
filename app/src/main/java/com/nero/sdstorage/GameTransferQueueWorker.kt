@@ -26,6 +26,7 @@ class GameTransferQueueWorker(context: Context, params: WorkerParameters) :
     private val notificationId = 8104
 
     override fun doWork(): Result {
+        db.resetInterruptedJobs()
         createChannel()
         return try {
             setForegroundAsync(ForegroundInfo(notificationId, notification("Đang chuẩn bị hàng đợi", 0, false))).get()
@@ -144,6 +145,9 @@ class GameTransferQueueWorker(context: Context, params: WorkerParameters) :
     private fun freeBytesForTree(tree: Uri): Long {
         return try {
             val volumeId = DocumentsContract.getTreeDocumentId(tree).substringBefore(':')
+            if (volumeId.equals("primary", true)) {
+                return StatFs(android.os.Environment.getExternalStorageDirectory().absolutePath).availableBytes
+            }
             val manager = applicationContext.getSystemService(Context.STORAGE_SERVICE) as StorageManager
             val volume = manager.storageVolumes.firstOrNull {
                 it.isRemovable && it.uuid?.equals(volumeId, true) == true
