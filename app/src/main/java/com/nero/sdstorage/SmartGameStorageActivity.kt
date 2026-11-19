@@ -490,7 +490,7 @@ class SmartGameStorageActivity : Activity() {
                         "PAUSED" -> {
                             addButton("Tiếp tục", blue, Color.WHITE) {
                                 database.updateJobStatus(job.id, "QUEUED")
-                                SmartGameWork.restartTransferQueue(this@SmartGameStorageActivity)
+                                SmartGameWork.runTransferQueue(this@SmartGameStorageActivity)
                                 refreshAll()
                             }
                             addButton("Hủy tác vụ", Color.rgb(255, 239, 239), red) {
@@ -504,7 +504,7 @@ class SmartGameStorageActivity : Activity() {
                         "FAILED" -> addButton("Thử lại", blue, Color.WHITE) {
                             database.updateJobStatus(job.id, "QUEUED")
                             database.updateJobProgress(job.id, 0L, 0L)
-                            SmartGameWork.restartTransferQueue(this@SmartGameStorageActivity)
+                            SmartGameWork.runTransferQueue(this@SmartGameStorageActivity)
                             refreshAll()
                         }
                     }
