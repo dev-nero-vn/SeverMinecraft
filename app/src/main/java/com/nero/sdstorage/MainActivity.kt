@@ -166,7 +166,7 @@ class MainActivity : Activity() {
             startActivity(Intent(this, SmartGameStorageActivity::class.java))
             return
         }
-        currentTab = if (tab > 3) 3 else tab
+        currentTab = if (tab >= 4) 3 else tab
         page.removeAllViews()
         val subtitles = listOf(
             "Quản lý bộ nhớ trong và thẻ SD",
@@ -176,7 +176,7 @@ class MainActivity : Activity() {
         )
         headerSubtitle.text = subtitles[currentTab]
         navItems.forEachIndexed { index, item ->
-            val selected = index == currentTab || (index == 3 && false)
+            val selected = if (currentTab == 3) index == 4 else index == currentTab
             item.setTextColor(if (selected) blue else muted)
             item.background = if (selected) rounded(Color.rgb(232, 242, 255), 14) else null
         }
