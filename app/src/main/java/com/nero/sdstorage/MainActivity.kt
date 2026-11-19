@@ -151,7 +151,13 @@ class MainActivity : Activity() {
                 setPadding(dp(4), dp(7), dp(4), dp(7))
                 isClickable = true
                 isFocusable = true
-                setOnClickListener {\n                    when (index) {\n                        3 -> startActivity(Intent(this@MainActivity, SmartGameStorageActivity::class.java))\n                        4 -> showTab(3)\n                        else -> showTab(index)\n                    }\n                }
+                setOnClickListener {
+                    when (index) {
+                        3 -> startActivity(Intent(this@MainActivity, SmartGameStorageActivity::class.java))
+                        4 -> showTab(3)
+                        else -> showTab(index)
+                    }
+                }
             }
             items.add(item)
             nav.addView(item, LinearLayout.LayoutParams(0, dp(54), 1f))
