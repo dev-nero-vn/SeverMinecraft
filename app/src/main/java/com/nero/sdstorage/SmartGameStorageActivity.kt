@@ -92,16 +92,22 @@ class SmartGameStorageActivity : Activity() {
                         AlertDialog.Builder(this@SmartGameStorageActivity)
                             .setTitle("Đã chuyển và xác minh")
                             .setMessage(
-                                name + " (" + formatBytes(size) + ") đã được ghi lên SD và xác minh SHA-256.\n\n" +
-                                    "Bản gốc vẫn còn. Bạn có muốn xóa bản gốc để giải phóng dung lượng không?\n\nSHA-256: " + hash
+                                name + " (" + formatBytes(size) + ") đã được ghi lên SD và xác minh SHA-256.\\n\\n" +
+                                    "Bản sao giống bản gốc, nhưng game không tự đổi đường dẫn sang SD. Chỉ xóa bản gốc nếu bạn chắc chắn game không còn cần tệp ở vị trí cũ.\\n\\nSHA-256: " + hash
                             )
-                            .setPositiveButton("Xóa bản gốc") { _, _ ->
-                                val original = sourceUri?.let { DocumentFile.fromSingleUri(this@SmartGameStorageActivity, it) }
-                                val deleted = original?.delete() == true
-                                toast(if (deleted) "Đã xóa bản gốc sau khi xác minh." else "Không xóa được bản gốc; bản trên SD vẫn được giữ.")
-                                refreshAll()
+                            .setPositiveButton("Giữ bản gốc") { _, _ -> refreshAll() }
+                            .setNegativeButton("Xóa bản gốc") { _, _ ->
+                                AlertDialog.Builder(this@SmartGameStorageActivity)
+                                    .setTitle("Xác nhận xóa bản gốc")
+                                    .setMessage("Bạn đã kiểm tra rằng game không còn cần tệp ở đường dẫn cũ và muốn giải phóng dung lượng?")
+                                    .setNegativeButton("Không xóa", null)
+                                    .setPositiveButton("Xóa tệp gốc") { _, _ ->
+                                        val original = sourceUri?.let { DocumentFile.fromSingleUri(this@SmartGameStorageActivity, it) }
+                                        val deleted = original?.delete() == true
+                                        toast(if (deleted) "Đã xóa bản gốc sau khi bạn xác nhận." else "Không xóa được bản gốc; bản trên SD vẫn được giữ.")
+                                        refreshAll()
+                                    }.show()
                             }
-                            .setNegativeButton("Giữ cả hai") { _, _ -> refreshAll() }
                             .setCancelable(false)
                             .show()
                     } else {
