@@ -162,7 +162,11 @@ class MainActivity : Activity() {
     }
 
     private fun showTab(tab: Int) {
-        currentTab = tab
+        if (tab == 3) {
+            startActivity(Intent(this, SmartGameStorageActivity::class.java))
+            return
+        }
+        currentTab = if (tab > 3) 3 else tab
         page.removeAllViews()
         val subtitles = listOf(
             "Quản lý bộ nhớ trong và thẻ SD",
@@ -170,12 +174,13 @@ class MainActivity : Activity() {
             "Duyệt và quản lý tệp đã lưu trên SD",
             "Thiết lập lưu trữ và cập nhật ứng dụng"
         )
-        headerSubtitle.text = subtitles[tab]
+        headerSubtitle.text = subtitles[currentTab]
         navItems.forEachIndexed { index, item ->
-            item.setTextColor(if (index == tab) blue else muted)
-            item.background = if (index == tab) rounded(Color.rgb(232, 242, 255), 14) else null
+            val selected = index == currentTab || (index == 3 && false)
+            item.setTextColor(if (selected) blue else muted)
+            item.background = if (selected) rounded(Color.rgb(232, 242, 255), 14) else null
         }
-        when (tab) {
+        when (currentTab) {
             0 -> buildHome()
             1 -> buildDownloadPage()
             2 -> buildFilesPage()
@@ -267,6 +272,15 @@ class MainActivity : Activity() {
         quick.addView(quickAction("▤", "Quản lý tệp", "Duyệt thẻ nhớ", green) { showTab(2) },
             LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(6) })
         page.addView(quick, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) })
+
+        addCard {
+            addView(makeText("SMART GAME STORAGE", 13f, blue, true))
+            addView(makeText("Thống kê Roblox, Free Fire, Liên Quân và chuyển thủ công những tệp trong thư mục Android cho phép truy cập.",
+                11f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
+            addActionButton("MỞ QUẢN LÝ TÀI NGUYÊN GAME", blue, Color.WHITE) {
+                startActivity(Intent(this@MainActivity, SmartGameStorageActivity::class.java))
+            }
+        }
 
         addCard {
             addView(makeText("LƯU Ý VỀ ỨNG DỤNG VÀ GAME", 13f, ink, true))
