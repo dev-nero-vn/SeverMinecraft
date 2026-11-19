@@ -251,9 +251,9 @@ class SmartGameStorageActivity : Activity() {
                 LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
             addView(makeText(
                 if (sourceTree != null)
-                    "Quản lý thủ công tệp trong thư mục bạn đã chọn. Dữ liệu riêng của game vẫn do Android bảo vệ."
+                    "Chuyển thủ công các tệp trong thư mục bạn đã chọn. Dữ liệu riêng của game vẫn do Android bảo vệ; chế độ tự động chuyển không khả dụng."
                 else
-                    "Chưa chọn thư mục tài nguyên có thể truy cập. Không thể tự động chuyển dữ liệu riêng của game.",
+                    "Chỉ thống kê game; dữ liệu riêng không thể truy cập. Tự động chuyển tài nguyên game chưa được Android cho phép.",
                 11f, orange
             ), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
 
