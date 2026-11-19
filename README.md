@@ -24,3 +24,6 @@ GitHub Actions tự build APK debug và đóng gói ZIP sau mỗi lần push lê
 
 ## Google Play
 Bản Actions hiện tạo APK debug để cài thử. Trước khi xuất bản Google Play cần build AAB release có ký bằng khóa phát hành do chủ sở hữu quản lý, hoàn tất biểu mẫu Data safety, chính sách quyền riêng tư và kiểm thử trên thiết bị thật.
+
+## Smart Game Storage
+Xem [docs/SMART_GAME_STORAGE.md](docs/SMART_GAME_STORAGE.md). Tính năng thống kê game cần Usage Access; chuyển tệp chỉ hoạt động trong thư mục do người dùng cấp quyền. Không thể di chuyển dữ liệu riêng của game trên Android 11+.
