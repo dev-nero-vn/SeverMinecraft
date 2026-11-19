@@ -40,10 +40,10 @@ data class GameTransferHistory(
     val createdAt: Long
 )
 
-enum class SnapshotChange { NEW_FILE, CHANGED_FILE, UNCHANGED }
+enum class SnapshotChange { NEW_FILE, CHANGED_FILE, STABLE_FILE, UNCHANGED }
 
 class SmartGameDatabase(context: Context) :
-    SQLiteOpenHelper(context.applicationContext, "sd_micro_smart_game.db", null, 1) {
+    SQLiteOpenHelper(context.applicationContext, "sd_micro_smart_game.db", null, 2) {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -65,6 +65,7 @@ class SmartGameDatabase(context: Context) :
                 mime_type TEXT,
                 first_seen_at INTEGER NOT NULL,
                 last_seen_at INTEGER NOT NULL,
+                stable_scans INTEGER NOT NULL DEFAULT 0,
                 PRIMARY KEY(package_name, document_uri)
             )"""
         )
@@ -103,7 +104,11 @@ class SmartGameDatabase(context: Context) :
         )
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) {
+            db.execSQL("ALTER TABLE file_snapshots ADD COLUMN stable_scans INTEGER NOT NULL DEFAULT 0")
+        }
+    }
 
     @Synchronized
     fun saveFolder(packageName: String, gameName: String, treeUri: Uri) {
@@ -128,12 +133,27 @@ class SmartGameDatabase(context: Context) :
 
     @Synchronized
     fun setAutoCopy(packageName: String, enabled: Boolean) {
-        writableDatabase.update(
-            "tracked_folders",
-            ContentValues().apply { put("auto_copy", if (enabled) 1 else 0) },
-            "package_name=?",
-            arrayOf(packageName)
-        )
+        writableDatabase.beginTransaction()
+        try {
+            writableDatabase.update(
+                "tracked_folders",
+                ContentValues().apply { put("auto_copy", if (enabled) 1 else 0) },
+                "package_name=?",
+                arrayOf(packageName)
+            )
+            if (enabled) {
+                // Existing files become the baseline; only later additions/changes may auto-copy.
+                writableDatabase.update(
+                    "file_snapshots",
+                    ContentValues().apply { put("stable_scans", 2) },
+                    "package_name=?",
+                    arrayOf(packageName)
+                )
+            }
+            writableDatabase.setTransactionSuccessful()
+        } finally {
+            writableDatabase.endTransaction()
+        }
     }
 
     @Synchronized
@@ -179,23 +199,36 @@ class SmartGameDatabase(context: Context) :
         var oldSize: Long? = null
         var oldModified: Long? = null
         var oldFirstSeen: Long? = null
+        var oldStableScans = 0
         db.query(
-            "file_snapshots", arrayOf("size_bytes", "modified_at", "first_seen_at"),
+            "file_snapshots",
+            arrayOf("size_bytes", "modified_at", "first_seen_at", "stable_scans"),
             "package_name=? AND document_uri=?",
-            arrayOf(packageName, documentUri.toString()), null, null, null
+            arrayOf(packageName, documentUri.toString()),
+            null, null, null
         ).use { cursor ->
             if (cursor.moveToFirst()) {
                 oldSize = cursor.getLong(0)
                 oldModified = cursor.getLong(1)
                 oldFirstSeen = cursor.getLong(2)
+                oldStableScans = cursor.getInt(3)
             }
         }
+
         val now = System.currentTimeMillis()
+        val isNew = oldSize == null
+        val isChanged = !isNew && (oldSize != size || oldModified != modifiedAt)
+        val stableScans = when {
+            isNew || isChanged -> 1
+            else -> (oldStableScans + 1).coerceAtMost(2)
+        }
         val change = when {
-            oldSize == null -> SnapshotChange.NEW_FILE
-            oldSize != size || oldModified != modifiedAt -> SnapshotChange.CHANGED_FILE
+            isNew -> SnapshotChange.NEW_FILE
+            isChanged -> SnapshotChange.CHANGED_FILE
+            stableScans >= 2 && oldStableScans < 2 -> SnapshotChange.STABLE_FILE
             else -> SnapshotChange.UNCHANGED
         }
+
         val values = ContentValues().apply {
             put("package_name", packageName)
             put("document_uri", documentUri.toString())
@@ -205,6 +238,7 @@ class SmartGameDatabase(context: Context) :
             put("mime_type", mimeType)
             put("first_seen_at", oldFirstSeen ?: now)
             put("last_seen_at", now)
+            put("stable_scans", stableScans)
         }
         db.insertWithOnConflict("file_snapshots", null, values, SQLiteDatabase.CONFLICT_REPLACE)
         return change
