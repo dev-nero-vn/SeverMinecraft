@@ -143,7 +143,7 @@ class MainActivity : Activity() {
 
         addCard {
             addView(makeText("LƯU TRỮ TRỰC TIẾP", 12f, green, true))
-            val ready = selectedTree?.let { DocumentFile.fromTreeUri(this, it)?.canWrite() } == true
+            val ready = selectedTree?.let { DocumentFile.fromTreeUri(this@MainActivity, it)?.canWrite() } == true
             addView(makeText(
                 if (ready) "Thư mục SD đã sẵn sàng nhận tệp tải xuống." else "Chọn một thư mục trên thẻ SD để bắt đầu lưu trực tiếp.",
                 15f, Color.WHITE, true
@@ -179,7 +179,7 @@ class MainActivity : Activity() {
                 val used = (total - free).coerceAtLeast(0L)
                 addView(makeText(formatBytes(used) + " đã dùng / " + formatBytes(total), 19f, Color.WHITE, true),
                     LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
-                val progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+                val progress = ProgressBar(this@MainActivity, null, android.R.attr.progressBarStyleHorizontal).apply {
                     max = 100
                     this.progress = ((used.toDouble() / total.toDouble()) * 100.0).toInt().coerceIn(0, 100)
                     progressTintList = android.content.res.ColorStateList.valueOf(tint)
@@ -196,7 +196,7 @@ class MainActivity : Activity() {
         sectionTitle("Tải thẳng vào thẻ SD", "Không lưu file hoàn chỉnh vào bộ nhớ trong trước")
         addCard {
             addView(makeText("THƯ MỤC NHẬN", 11f, green, true))
-            val folder = selectedTree?.let { DocumentFile.fromTreeUri(this, it) }
+            val folder = selectedTree?.let { DocumentFile.fromTreeUri(this@MainActivity, it) }
             addView(makeText(folder?.name ?: "Chưa chọn thư mục SD", 16f, Color.WHITE, true),
                 LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
             addActionButton("Chọn / đổi thư mục SD", Color.rgb(40, 91, 155)) { chooseSdFolder() }
@@ -206,7 +206,7 @@ class MainActivity : Activity() {
             setHintTextColor(Color.rgb(135, 157, 187))
             setTextColor(Color.WHITE)
             textSize = 14f
-            singleLine = true
+            setSingleLine(true)
             inputType = android.text.InputType.TYPE_TEXT_VARIATION_URI
             background = rounded(Color.rgb(27, 45, 72), 14)
             setPadding(dp(14), dp(13), dp(14), dp(13))
@@ -216,7 +216,7 @@ class MainActivity : Activity() {
             setHintTextColor(Color.rgb(135, 157, 187))
             setTextColor(Color.WHITE)
             textSize = 14f
-            singleLine = true
+            setSingleLine(true)
             background = rounded(Color.rgb(27, 45, 72), 14)
             setPadding(dp(14), dp(13), dp(14), dp(13))
         }
@@ -234,7 +234,7 @@ class MainActivity : Activity() {
                 } else if (!link.startsWith("https://", true)) {
                     toast("Chỉ hỗ trợ liên kết HTTPS an toàn")
                 } else {
-                    val intent = Intent(this, DownloadService::class.java).apply {
+                    val intent = Intent(this@MainActivity, DownloadService::class.java).apply {
                         action = DownloadService.ACTION_DOWNLOAD
                         putExtra(DownloadService.EXTRA_URL, link)
                         putExtra(DownloadService.EXTRA_TREE, selectedTree.toString())
@@ -262,7 +262,7 @@ class MainActivity : Activity() {
 
     private fun buildFilesPage() {
         sectionTitle("Tệp trên thẻ SD", "Chỉ hiển thị thư mục bạn đã cấp quyền")
-        val root = selectedTree?.let { DocumentFile.fromTreeUri(this, it) }
+        val root = selectedTree?.let { DocumentFile.fromTreeUri(this@MainActivity, it) }
         if (root == null) {
             addCard {
                 addView(makeText("Chưa chọn thư mục SD", 16f, Color.WHITE, true))
@@ -275,7 +275,7 @@ class MainActivity : Activity() {
             addView(makeText("THƯ MỤC HIỆN TẠI", 11f, green, true))
             addView(makeText(currentFolder?.name ?: root.name ?: "Thẻ SD", 15f, Color.WHITE, true),
                 LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
-            addActionButton(if (currentFolder == root) "Về thư mục gốc SD" else "Quay về thư mục gốc") {
+            addActionButton(if (currentFolder == root) "Về thư mục gốc SD" else "Quay về thư mục gốc", blue) {
                 currentFolder = root
                 showTab(2)
             }
@@ -299,7 +299,7 @@ class MainActivity : Activity() {
                         }
                     } else {
                         addActionButton("Xóa tệp này", Color.rgb(123, 55, 65)) {
-                            AlertDialog.Builder(this)
+                            AlertDialog.Builder(this@MainActivity)
                                 .setTitle("Xóa tệp?")
                                 .setMessage("Bạn có chắc muốn xóa " + (item.name ?: "tệp này") + " khỏi thẻ SD không?")
                                 .setNegativeButton("Hủy", null)
@@ -319,7 +319,7 @@ class MainActivity : Activity() {
         sectionTitle("Cài đặt", "Quyền truy cập do Android kiểm soát")
         addCard {
             addView(makeText("THƯ MỤC LƯU MẶC ĐỊNH", 11f, green, true))
-            addView(makeText(selectedTree?.let { DocumentFile.fromTreeUri(this, it)?.name } ?: "Chưa chọn", 13f, Color.WHITE),
+            addView(makeText(selectedTree?.let { DocumentFile.fromTreeUri(this@MainActivity, it)?.name } ?: "Chưa chọn", 13f, Color.WHITE),
                 LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
             addActionButton("Chọn thư mục thẻ SD", blue) { chooseSdFolder() }
             addActionButton("Gỡ quyền thư mục đã chọn", Color.rgb(123, 55, 65)) {
