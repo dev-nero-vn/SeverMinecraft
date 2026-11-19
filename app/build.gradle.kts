@@ -48,4 +48,5 @@ android {
 dependencies {
     implementation("androidx.documentfile:documentfile:1.0.1")
     implementation("androidx.core:core:1.15.0")
+    implementation("androidx.work:work-runtime:2.12.0")
 }
