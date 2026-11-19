@@ -151,7 +151,7 @@ class MainActivity : Activity() {
                 setPadding(dp(4), dp(7), dp(4), dp(7))
                 isClickable = true
                 isFocusable = true
-                setOnClickListener { showTab(index) }
+                setOnClickListener {\n                    when (index) {\n                        3 -> startActivity(Intent(this@MainActivity, SmartGameStorageActivity::class.java))\n                        4 -> showTab(3)\n                        else -> showTab(index)\n                    }\n                }
             }
             items.add(item)
             nav.addView(item, LinearLayout.LayoutParams(0, dp(54), 1f))
@@ -162,11 +162,7 @@ class MainActivity : Activity() {
     }
 
     private fun showTab(tab: Int) {
-        if (tab == 3) {
-            startActivity(Intent(this, SmartGameStorageActivity::class.java))
-            return
-        }
-        currentTab = if (tab >= 4) 3 else tab
+        currentTab = tab.coerceIn(0, 3)
         page.removeAllViews()
         val subtitles = listOf(
             "Quản lý bộ nhớ trong và thẻ SD",
