@@ -1,0 +1,38 @@
+name: TIDEUS LINK Linux CI
+
+on:
+  push:
+    branches: [tideus-link]
+    paths:
+      - "tideus-link/**"
+      - ".github/workflows/tideus-link-ci.yml"
+  pull_request:
+    paths:
+      - "tideus-link/**"
+      - ".github/workflows/tideus-link-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tideus-link
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tideus-link/package.json
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Validate JavaScript
+        run: npm run build
+      - name: Run tests
+        run: npm test
