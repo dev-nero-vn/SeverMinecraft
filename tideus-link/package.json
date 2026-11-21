@@ -3,16 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "TIDEUS LINK Linux control center and Discord bot",
+  "description": "TIDEUS LINK Linux desktop-style control center and multi-platform messaging core",
   "engines": { "node": ">=22" },
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "test": "node --test",
-    "build": "node --check src/server.js && node --check src/discord-bot.js && node --check src/commands.js && node --check src/activity-store.js && node --check public/app.js"
+    "build": "node --check src/server.js && node --check src/security.js && node --check src/activity-store.js && node --check src/plugins.js && node --check src/command-router.js && node --check public/app.js"
   },
   "dependencies": {
-    "discord.js": "^14.19.3",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "helmet": "^8.1.0"
