@@ -263,31 +263,31 @@ class LinkProcessor(
             val refresh = document.selectFirst("meta[http-equiv=refresh][content]")
             if (refresh != null) {
                 val refreshContent = refresh.attr("content")
-                val quoted = Regex("""(?i)\\burl\\s*=\\s*['"]([^'"]+)['"]""")
+                val quoted = Regex("""(?i)\burl\s*=\s*['"]([^'"]+)['"]""")
                     .find(refreshContent)?.groupValues?.getOrNull(1)
-                val unquoted = Regex("""(?i)\\burl\\s*=\\s*([^;]+)""")
+                val unquoted = Regex("""(?i)\burl\s*=\s*([^;]+)""")
                     .find(refreshContent)?.groupValues?.getOrNull(1)
-                val target = (quoted ?: unquoted)?.trim()?.trim('"', '\\'')
+                val target = (quoted ?: unquoted)?.trim()?.trim('"', '\'')
                 if (!target.isNullOrBlank()) {
                     return RedirectCandidate(target, "meta-refresh")
                 }
             }
 
             val inlineScripts = document.select("script:not([src])")
-                .joinToString("\\n") { script ->
+                .joinToString("\n") { script ->
                     script.data().ifBlank { script.html() }
                 }
 
             val assignmentPatterns = listOf(
-                Regex("""(?is)(?:window\\s*\\.\\s*)?(?:document\\s*\\.\\s*)?location(?:\\s*\\.\\s*href)?\\s*=\\s*(['"])(.*?)\\1"""),
-                Regex("""(?is)(?:window\\s*\\.\\s*)?(?:document\\s*\\.\\s*)?location\\s*\\.\\s*(?:assign|replace)\\s*\\(\\s*(['"])(.*?)\\1\\s*\\)""")
+                Regex("""(?is)(?:window\s*\.\s*)?(?:document\s*\.\s*)?location(?:\s*\.\s*href)?\s*=\s*(['"])(.*?)\1"""),
+                Regex("""(?is)(?:window\s*\.\s*)?(?:document\s*\.\s*)?location\s*\.\s*(?:assign|replace)\s*\(\s*(['"])(.*?)\1\s*\)""")
             )
             for (pattern in assignmentPatterns) {
                 val match = pattern.find(inlineScripts) ?: continue
                 val target = match.groupValues.getOrNull(2)
-                    ?.replace("\\\\/", "/")
-                    ?.replace("\\\\u0026", "&", ignoreCase = true)
-                    ?.replace("\\\\x3d", "=", ignoreCase = true)
+                    ?.replace("\\/", "/")
+                    ?.replace("\\u0026", "&", ignoreCase = true)
+                    ?.replace("\\x3d", "=", ignoreCase = true)
                     ?.trim()
                     .orEmpty()
                 if (target.isNotBlank()) return RedirectCandidate(target, "JavaScript tĩnh")
