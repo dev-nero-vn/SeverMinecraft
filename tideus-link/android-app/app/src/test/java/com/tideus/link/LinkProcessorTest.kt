@@ -82,6 +82,52 @@ class LinkProcessorTest {
         assertEquals(128L, File(result.savedLocation!!).length())
     }
 
+
+    @Test
+    fun detectsQuotedMetaRefreshRedirect() {
+        val html = """
+            <html><head>
+              <meta http-equiv="refresh" content="0; url='/final/page?from=short'">
+            </head><body>Redirecting</body></html>
+        """.trimIndent()
+        val redirect = LinkProcessor.extractPublicRedirect(html, "https://short.example/start")
+        assertEquals("meta-refresh", redirect?.kind)
+        assertEquals(
+            "https://short.example/final/page?from=short",
+            URI("https://short.example/start").resolve(redirect!!.target).toString()
+        )
+    }
+
+    @Test
+    fun detectsLiteralJavascriptLocationRedirects() {
+        val assignmentHtml = """<html><script>window.location.href = "https://target.example/path?a=1";</script></html>"""
+        val assignment = LinkProcessor.extractPublicRedirect(assignmentHtml, "https://short.example/")
+        assertEquals("JavaScript tĩnh", assignment?.kind)
+        assertEquals("https://target.example/path?a=1", assignment?.target)
+
+        val replaceHtml = """<html><script>location.replace("../destination");</script></html>"""
+        val replace = LinkProcessor.extractPublicRedirect(replaceHtml, "https://short.example/a/start")
+        assertEquals("../destination", replace?.target)
+    }
+
+    @Test
+    fun doesNotExecuteDynamicJavascriptOrDecodeHiddenTargets() {
+        val html = """<html><script>window.location.href = atob("aHR0cHM6Ly9leGFtcGxlLmNvbQ==");</script></html>"""
+        assertEquals(null, LinkProcessor.extractPublicRedirect(html, "https://short.example/"))
+    }
+
+    @Test
+    fun detectsCaptchaLoginAndSubscriptionGatesWithoutBypassingThem() {
+        val captcha = """<html><head><title>Verify</title></head><body><div class="g-recaptcha"></div></body></html>"""
+        assertTrue(LinkProcessor.detectAccessGate(captcha)?.contains("CAPTCHA") == true)
+
+        val login = """<html><body><form action="/login"><input type="password"></form></body></html>"""
+        assertTrue(LinkProcessor.detectAccessGate(login)?.contains("đăng nhập") == true)
+
+        val paywall = """<html><body>This article is for subscribers. Subscribe to continue.</body></html>"""
+        assertTrue(LinkProcessor.detectAccessGate(paywall)?.contains("paywall") == true)
+    }
+
     private fun assertThrowsIOException(block: () -> Unit) {
         try {
             block()
