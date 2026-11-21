@@ -1,51 +1,56 @@
 # TIDEUS LINK — Linux Control Center
 
-Node.js 22 service with a desktop-style web dashboard, owner login, live activity feed, and an optional Discord bot adapter.
+TIDEUS LINK is being built as a Linux-hosted, desktop-style control center for connected messaging platforms. Discord has been deliberately excluded from this project.
 
-## Implemented in this starter
+## Implemented foundation
 
-- Owner dashboard login with an HMAC-signed, HttpOnly session cookie.
+- Desktop-style Vietnamese web dashboard.
+- Owner login using an HMAC-signed, HttpOnly session cookie.
 - Health and service-status endpoints.
-- Live activity feed (polling from the dashboard).
-- Discord commands: `!help`, `!menu`, `!ping`, `!status`, `!getlink`, and Owner-only `!bot on/off/status`.
-- `!getlink` returns the actual attachment URL supplied by Discord.
-- Dynamic command list is generated from the command registry.
-- Valid command messages can be deleted when Discord grants the bot `Manage Messages`.
-- Unknown-command suggestions are based on edit distance.
-- Tests cover parsing, permissions, and command suggestions.
+- Persistent activity journal stored outside the source tree.
+- Plugin registry for Zalo Official Account, Messenger/Facebook Page, and TikTok Business Messaging.
+- Plugin connection states are truthful: each provider remains **not connected** until its official OAuth/webhook integration is configured and verified.
+- Core command router with per-user/per-conversation chat-session isolation and smart command suggestions.
+- `!menu`, `!help`, `!status`, `!ping`, `!getlink`, and `!chat on/off/status` handlers are implemented in the platform-neutral command core.
+- Local automated tests for sessions, command recognition, chat ownership, plugin status, and security primitives.
 
-## Not yet connected
+## Not yet connected / not represented as complete
 
-Zalo OA, Messenger Page, TikTok Business Messaging, OAuth account linking, remote API-key rotation, external video download, full redirect extraction, AI chat, image generation, and production deployment each require their own authorized provider credentials, platform approvals, and integration tests. The dashboard reports these as not connected; it does not fake successful connections.
+Zalo OA OAuth + webhook signature verification, Messenger Page OAuth + webhook verification, TikTok Business Messaging access, media download pipelines, production reply delivery, AI chat, GitHub AI developer tools, and app auto-update require real provider credentials, approval, server deployment, and end-to-end tests. The dashboard does not fake successful connections or message delivery.
 
-Gemini API is not included. Do not paste API keys into chat or commit keys to Git. Any future provider secret must be entered directly into a server-side secret manager. The exposed key previously pasted should be revoked.
+No API key pasted into chat is used. The previously exposed provider key should be revoked. Do not commit secrets to GitHub. Enter future provider credentials directly into a server-side secret store after the relevant provider requirements are confirmed.
 
 ## Requirements
 
 - Linux server
 - Node.js 22+
-- Discord bot application/token for live Discord tests
-- Discord Message Content Intent enabled for prefix commands
-- Bot installed in the target server with View Channels, Send Messages, Read Message History, and optionally Manage Messages permissions
+- HTTPS reverse proxy before exposing the dashboard publicly
+- Strong `DASHBOARD_PASSWORD` and random `DASHBOARD_SESSION_SECRET`
 
-## Run
+## Run locally
 
 ```bash
 cd tideus-link
 cp .env.example .env
 npm install
-# Edit .env with a unique dashboard password, session secret, and Discord bot token.
+# Edit .env and set a unique dashboard password and random session secret.
 npm run build
 npm test
 npm start
 ```
 
-Open `http://SERVER:8787` from a trusted network. Put the service behind HTTPS before exposing it publicly. For production, use a process manager such as systemd and a reverse proxy with TLS.
+Open `http://127.0.0.1:8787` or use a trusted internal network. Do not expose the service to the public internet without TLS, firewall rules, and a reverse proxy.
+
+## Linux deployment
+
+A Dockerfile and Compose file are provided. Persist `/app/data`, keep `.env` outside Git, and use a managed runtime with restart-on-failure. Back up the data directory securely.
 
 ## Security
 
-- Never commit `.env`.
-- Use a firewall and HTTPS.
-- Restrict Owner IDs to trusted Discord IDs.
-- Do not enable privileged Discord intents unless needed.
-- Do not expose the dashboard directly to the public internet without TLS and additional network controls.
+- `.env` is ignored by Git.
+- HttpOnly, SameSite cookies; Secure cookies in production.
+- Login throttling.
+- Provider webhooks must verify each provider's signature before processing events.
+- Store OAuth tokens encrypted at rest and grant only required scopes.
+- Do not log message secrets, API keys, or full URLs containing credentials.
+- The app must only process conversations and accounts that the Owner has explicitly connected and authorized.
