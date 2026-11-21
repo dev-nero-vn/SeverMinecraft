@@ -1,0 +1,1 @@
+# TIDEUS LINK uses platform APIs only. Keep this file for future release rules.
