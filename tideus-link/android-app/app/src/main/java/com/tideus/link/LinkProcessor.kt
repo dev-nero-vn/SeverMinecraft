@@ -30,7 +30,7 @@ data class LinkProcessResult(
     val savedUri: Uri? = null
 )
 
-class LinkProcessor(private val context: Context) {
+class LinkProcessor(\n    private val context: Context? = null,\n    private val fileSink: ((ByteArray, String, String) -> Pair<Uri?, String>)? = null\n) {
 
     fun process(
         rawUrl: String,
@@ -181,6 +181,8 @@ class LinkProcessor(private val context: Context) {
     }
 
     private fun saveToDownloads(bytes: ByteArray, fileName: String, mimeType: String): Pair<Uri?, String> {
+        fileSink?.let { return it(bytes, fileName, mimeType) }
+        val appContext = context ?: throw IOException("Không có bộ lưu tệp trên thiết bị.")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val values = ContentValues().apply {
                 put(MediaStore.Downloads.DISPLAY_NAME, fileName)
@@ -188,22 +190,22 @@ class LinkProcessor(private val context: Context) {
                 put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/TIDEUS LINK")
                 put(MediaStore.Downloads.IS_PENDING, 1)
             }
-            val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+            val uri = appContext.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
                 ?: throw IOException("Không thể tạo tệp trong thư mục Tải xuống.")
             try {
-                context.contentResolver.openOutputStream(uri, "w")?.use { it.write(bytes) }
+                appContext.contentResolver.openOutputStream(uri, "w")?.use { it.write(bytes) }
                     ?: throw IOException("Không thể ghi nội dung tệp đã tải.")
                 val completed = ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) }
-                context.contentResolver.update(uri, completed, null, null)
+                appContext.contentResolver.update(uri, completed, null, null)
                 return uri to "Downloads/TIDEUS LINK/$fileName"
             } catch (error: Exception) {
-                context.contentResolver.delete(uri, null, null)
+                appContext.contentResolver.delete(uri, null, null)
                 throw error
             }
         }
 
-        val directory = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-            ?: File(context.filesDir, "downloads")
+        val directory = appContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+            ?: File(appContext.filesDir, "downloads")
         if (!directory.exists() && !directory.mkdirs()) {
             throw IOException("Không thể tạo thư mục lưu tệp.")
         }
