@@ -18,7 +18,7 @@ function toast(message) {
 }
 function renderLogin(error = "") {
   app.innerHTML = `<section class="login-wrap"><form class="login-card" id="login-form">
-    <div class="login-brand"><div class="brand-mark">T</div><div><strong>TIDEUS LINK</strong><span>Linux Control Center</span></div></div>
+    <div class="login-brand"><div class="brand-mark"><img src="/tideus-logo.svg" alt=""></div><div><strong>TIDEUS LINK</strong><span>Linux Control Center</span></div></div>
     <div class="eyebrow">SECURE OWNER ACCESS</div><h2>Đăng nhập quản trị</h2><p class="muted" style="font-size:12px;line-height:1.7">Đăng nhập để quản lý plugin, nhật ký hoạt động và các cuộc trò chuyện đã được kết nối.</p>
     <div class="field"><label>Tên đăng nhập</label><input name="username" autocomplete="username" required></div>
     <div class="field"><label>Mật khẩu</label><input name="password" type="password" autocomplete="current-password" required></div>
@@ -39,7 +39,7 @@ function shell(content) {
   ];
   app.innerHTML = `<div class="layout">
     <aside class="sidebar">
-      <div class="brand"><div class="brand-mark">T</div><div><div class="brand-name">TIDEUS LINK</div><div class="brand-sub">LINUX CONTROL CENTER</div></div></div>
+      <div class="brand"><div class="brand-mark"><img src="/tideus-logo.svg" alt=""></div><div><div class="brand-name">TIDEUS LINK</div><div class="brand-sub">LINUX CONTROL CENTER</div></div></div>
       <div><div class="nav-group-title">WORKSPACE</div><nav class="nav-list">${nav.map(([id,label])=>`<button class="nav-btn ${state.page===id?"active":""}" data-page="${id}"><span class="nav-icon">${icons[id]}</span>${label}</button>`).join("")}</nav></div>
       <div class="sidebar-bottom"><div class="nav-group-title">SERVER</div><div class="server-pill"><span class="dot"></span><div><b>Linux Engine</b><div class="muted" style="font-size:9px;margin-top:3px">Control center online</div></div></div></div>
     </aside>
