@@ -13,7 +13,6 @@ on:
       - "tideus-link/compose.yaml"
       - "tideus-link/README.md"
       - "tideus-link/DEPLOY.md"
-      - "tideus-link/public/tideus-logo.svg"
       - ".github/workflows/tideus-link-android.yml"
   workflow_dispatch:
 
@@ -45,6 +44,19 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.9
+      - name: Verify native inbox source
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACTIVITY="tideus-link/android-app/app/src/main/java/com/tideus/link/MainActivity.kt"
+          grep -q 'private fun renderInbox()' "$ACTIVITY"
+          grep -q 'private fun renderConversation' "$ACTIVITY"
+          grep -q 'private fun renderPlugins()' "$ACTIVITY"
+          grep -q 'Kết nối Plugin để thay dữ liệu mẫu' "$ACTIVITY"
+          if grep -qE 'showConnectScreen|normalizeServerUrl|Nhập địa chỉ máy chủ' "$ACTIVITY"; then
+            echo "The app must not require a manual Linux URL entry screen."
+            exit 1
+          fi
       - name: Build debug APK
         working-directory: tideus-link/android-app
         run: gradle --no-daemon :app:assembleDebug
@@ -57,24 +69,23 @@ jobs:
           test -s "$APK"
           cp "$APK" tideus-link/release/TIDEUS-LINK.apk
           cat > tideus-link/release/README-ANDROID.txt <<'EOF'
-          TIDEUS LINK Android companion (debug build)
+          TIDEUS LINK Android app — version 0.3.0 (debug build)
 
-          This APK is a companion client for the TIDEUS LINK Linux Control Center.
-          On first launch, enter the HTTPS address of your deployed Linux server.
-          The Linux server must be deployed and reachable; this APK does not bundle
-          the Linux services or provider credentials.
+          The app opens directly into its native inbox. It does not ask the user
+          to enter a Linux server URL. The inbox currently displays clearly
+          labelled preview conversations and sample messages.
 
-          For private LAN testing only, HTTP is accepted for localhost/private IPs.
-          Use HTTPS for remote access. The APK is debug-signed and is not a
-          Play Store/release-signed package.
+          The Plugin Center lists Zalo Official Account, Messenger/Facebook Page,
+          and TikTok Business. Live account sign-in, real conversation sync,
+          and outgoing message delivery are not yet active in this starter.
+          Each integration requires provider-approved OAuth, verified webhooks,
+          a deployed backend, server-side credential storage, and end-to-end tests.
 
-          Plugin adapters for Zalo OA, Messenger Page and TikTok Business,
-          AI chat, and real message delivery require their own approved OAuth
-          permissions, webhook verification, and production server configuration.
-          These services are not reported as connected in this starter.
+          This APK is debug-signed, not release/Play Store signed. Do not put API
+          keys or passwords in the APK or chat messages.
           EOF
           cp -r tideus-link/android-app tideus-link/release/android-app-source
-          rm -rf tideus-link/release/android-app-source/.gradle tideus-link/release/android-app-source/build tideus-link/release/android-app-source/app/build
+          rm -rf tideus-link/release/android-app-source/.gradle tideus-link/release/android-app-source/.kotlin tideus-link/release/android-app-source/build tideus-link/release/android-app-source/app/build
           cp tideus-link/public/tideus-logo.svg tideus-link/release/TIDEUS-LINK-Logo.svg
           mkdir -p tideus-link/release/linux-server-source
           cp tideus-link/package.json tideus-link/.env.example tideus-link/Dockerfile tideus-link/compose.yaml tideus-link/README.md tideus-link/DEPLOY.md tideus-link/release/linux-server-source/
