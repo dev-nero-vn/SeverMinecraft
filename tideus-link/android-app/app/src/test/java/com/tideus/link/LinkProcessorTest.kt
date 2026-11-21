@@ -1,6 +1,5 @@
 package com.tideus.link
 
-import android.content.ContextWrapper
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -8,6 +7,8 @@ import org.junit.Test
 import java.io.IOException
 import java.net.InetAddress
 import java.net.URI
+import java.io.File
+import java.nio.file.Files
 
 class LinkProcessorTest {
 
@@ -50,7 +51,7 @@ class LinkProcessorTest {
     @Test
     fun performsRealHttpsFetchAndExtractsPublicPage() {
         // Live smoke test: verifies DNS, TLS, HTTP retrieval and HTML extraction end-to-end.
-        val processor = LinkProcessor(ContextWrapper(null))
+        val processor = LinkProcessor()
         val result = processor.process("https://example.com") { _, _, _ -> }
         assertFalse(result.isFile)
         assertEquals("example.com", URI(result.finalUrl).host)
