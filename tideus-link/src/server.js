@@ -11,7 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const port = Number(process.env.PORT || 8787);
 const host = process.env.HOST || "127.0.0.1";
-const sessionSecret = process.env.DASHBOARD_SESSION_SECRET || "";
+const sessionSecret = process.env.DASHBOARD_SESSION_SECRET || (process.env.NODE_ENV === "production" ? "" : "development-only-session-secret-please-change");
 const dashboardUser = process.env.DASHBOARD_USER || "owner";
 const dashboardPassword = process.env.DASHBOARD_PASSWORD || "";
 const cookieName = "tideus_session";
@@ -73,7 +73,7 @@ app.post("/api/login", async (req, res) => {
     return res.status(401).json({ error: "invalid_credentials", message: "Tên đăng nhập hoặc mật khẩu không đúng." });
   }
   loginAttempts.delete(key);
-  const token = createSessionToken(dashboardUser, sessionSecret || "development-only-session-secret-please-change", 8 * 60 * 60);
+  const token = createSessionToken(dashboardUser, sessionSecret, 8 * 60 * 60);
   res.cookie(cookieName, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
