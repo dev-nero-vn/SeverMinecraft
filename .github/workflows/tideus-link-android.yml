@@ -51,6 +51,10 @@ jobs:
           grep -q 'MAX_DOWNLOAD_MB = 12' "$ENGINE"
           grep -q 'saveToDownloads' "$ENGINE"
           grep -q 'extractHtml' "$ENGINE"
+          grep -q 'extractPublicRedirect' "$ENGINE"
+          grep -q 'detectAccessGate' "$ENGINE"
+          grep -q 'location.*replace' "$ENGINE"
+          grep -q 'meta-refresh' "$ENGINE"
           if grep -qE 'renderInbox|renderConversation|renderPlugins|bottomNavigation' "$ACTIVITY"; then
             echo "The focused bypass screen must not contain old chat navigation."
             exit 1
