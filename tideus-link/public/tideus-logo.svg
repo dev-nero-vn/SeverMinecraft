@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="TIDEUS LINK logo">
+  <defs>
+    <linearGradient id="t" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e34bff"/><stop offset=".52" stop-color="#7e42ff"/><stop offset="1" stop-color="#28e4f5"/></linearGradient>
+    <linearGradient id="orbit" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ae62ff"/><stop offset=".55" stop-color="#43baff"/><stop offset="1" stop-color="#4cf1f0"/></linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="9" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#0a1024"/>
+  <rect x="5" y="5" width="502" height="502" rx="108" fill="none" stroke="#3349a2" stroke-width="5"/>
+  <path d="M78 130h356l-47 58H286v232h-78V188h-83z" fill="url(#t)" filter="url(#glow)"/>
+  <path d="M255 130h179l-47 58H286z" fill="#3de6f3" opacity=".9"/>
+  <path d="M92 326c27 66 119 78 170 22l92-101c44-48 109-25 112 27" fill="none" stroke="url(#orbit)" stroke-width="19" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M76 270c3-61 77-91 121-46l62 64c37 38 91 37 124 0" fill="none" stroke="#b77aff" stroke-width="17" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M412 54l12 35 35 12-35 12-12 35-12-35-35-12 35-12z" fill="#fff" filter="url(#glow)"/>
+</svg>
