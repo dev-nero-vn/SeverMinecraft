@@ -5,14 +5,6 @@ on:
     branches: [tideus-link]
     paths:
       - "tideus-link/android-app/**"
-      - "tideus-link/src/**"
-      - "tideus-link/public/**"
-      - "tideus-link/test/**"
-      - "tideus-link/package.json"
-      - "tideus-link/Dockerfile"
-      - "tideus-link/compose.yaml"
-      - "tideus-link/README.md"
-      - "tideus-link/DEPLOY.md"
       - ".github/workflows/tideus-link-android.yml"
   workflow_dispatch:
 
@@ -44,64 +36,45 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.9
-      - name: Verify native inbox source
+      - name: Verify focused bypass UI source
         shell: bash
         run: |
           set -euo pipefail
           ACTIVITY="tideus-link/android-app/app/src/main/java/com/tideus/link/MainActivity.kt"
-          grep -q 'private fun renderInbox()' "$ACTIVITY"
-          grep -q 'private fun renderConversation' "$ACTIVITY"
-          grep -q 'private fun renderPlugins()' "$ACTIVITY"
-          grep -q 'Kết nối Plugin để thay dữ liệu mẫu' "$ACTIVITY"
-          if grep -qE 'showConnectScreen|normalizeServerUrl|Nhập địa chỉ máy chủ' "$ACTIVITY"; then
-            echo "The app must not require a manual Linux URL entry screen."
+          grep -q 'DÁN LINK CẦN BYPASS' "$ACTIVITY"
+          grep -q 'BẮT ĐẦU BYPASS' "$ACTIVITY"
+          grep -q 'TIẾN TRÌNH' "$ACTIVITY"
+          grep -q 'KẾT QUẢ' "$ACTIVITY"
+          grep -q 'pasteFromClipboard' "$ACTIVITY"
+          grep -q 'beginLinkCheck' "$ACTIVITY"
+          if grep -qE 'renderInbox|renderConversation|renderPlugins|bottomNavigation' "$ACTIVITY"; then
+            echo "Old inbox/plugin navigation must not remain in the focused bypass UI."
             exit 1
           fi
       - name: Build debug APK
         working-directory: tideus-link/android-app
         run: gradle --no-daemon :app:assembleDebug
-      - name: Verify APK and assemble ZIP
+      - name: Verify APK and package APK-only ZIP
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p tideus-link/release
+          mkdir -p tideus-link/release/package
           APK="tideus-link/android-app/app/build/outputs/apk/debug/app-debug.apk"
           test -s "$APK"
           cp "$APK" tideus-link/release/TIDEUS-LINK.apk
-          cat > tideus-link/release/README-ANDROID.txt <<'EOF'
-          TIDEUS LINK Android app — version 0.3.0 (debug build)
-
-          The app opens directly into its native inbox. It does not ask the user
-          to enter a Linux server URL. The inbox currently displays clearly
-          labelled preview conversations and sample messages.
-
-          The Plugin Center lists Zalo Official Account, Messenger/Facebook Page,
-          and TikTok Business. Live account sign-in, real conversation sync,
-          and outgoing message delivery are not yet active in this starter.
-          Each integration requires provider-approved OAuth, verified webhooks,
-          a deployed backend, server-side credential storage, and end-to-end tests.
-
-          This APK is debug-signed, not release/Play Store signed. Do not put API
-          keys or passwords in the APK or chat messages.
-          EOF
-          cp -r tideus-link/android-app tideus-link/release/android-app-source
-          rm -rf tideus-link/release/android-app-source/.gradle tideus-link/release/android-app-source/.kotlin tideus-link/release/android-app-source/build tideus-link/release/android-app-source/app/build
-          cp tideus-link/public/tideus-logo.svg tideus-link/release/TIDEUS-LINK-Logo.svg
-          mkdir -p tideus-link/release/linux-server-source
-          cp tideus-link/package.json tideus-link/.env.example tideus-link/Dockerfile tideus-link/compose.yaml tideus-link/README.md tideus-link/DEPLOY.md tideus-link/release/linux-server-source/
-          cp -r tideus-link/src tideus-link/public tideus-link/test tideus-link/release/linux-server-source/
-          cd tideus-link/release
-          zip -qr TIDEUS-LINK-Complete.zip TIDEUS-LINK.apk README-ANDROID.txt TIDEUS-LINK-Logo.svg android-app-source linux-server-source
-          cd ../..
-          test -s tideus-link/release/TIDEUS-LINK-Complete.zip
-          unzip -l tideus-link/release/TIDEUS-LINK-Complete.zip
-      - name: Upload APK and source ZIP
+          cp "$APK" tideus-link/release/package/TIDEUS-LINK.apk
+          (cd tideus-link/release/package && zip -q ../TIDEUS-LINK.zip TIDEUS-LINK.apk)
+          test -s tideus-link/release/TIDEUS-LINK.zip
+          unzip -t tideus-link/release/TIDEUS-LINK.zip
+          ZIP_ITEMS="$(unzip -Z1 tideus-link/release/TIDEUS-LINK.zip)"
+          test "$ZIP_ITEMS" = "TIDEUS-LINK.apk"
+          echo "ZIP contains exactly one file: TIDEUS-LINK.apk"
+      - name: Upload APK and ZIP only
         uses: actions/upload-artifact@v4
         with:
-          name: TIDEUS-LINK-Android-APK-and-Source
+          name: TIDEUS-LINK-Bypass-APK
           path: |
             tideus-link/release/TIDEUS-LINK.apk
-            tideus-link/release/TIDEUS-LINK-Complete.zip
-            tideus-link/release/TIDEUS-LINK-Logo.svg
+            tideus-link/release/TIDEUS-LINK.zip
           if-no-files-found: error
           retention-days: 30
