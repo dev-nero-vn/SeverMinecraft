@@ -45,8 +45,12 @@ class LinkProcessor(
 
         var response: HttpURLConnection? = null
         var redirects = 0
+        val visitedUrls = mutableSetOf<String>()
         try {
             while (true) {
+                if (!visitedUrls.add(current.normalize().toString())) {
+                    throw IOException("Phát hiện vòng lặp chuyển hướng. Đã dừng để tránh tải lặp vô hạn.")
+                }
                 validatePublicHost(current.host)
                 onProgress(18 + redirects * 3, 1, "Đang kết nối ${current.host}")
 
@@ -137,6 +141,24 @@ class LinkProcessor(
                     val charset = parseCharset(contentTypeHeader)
                     val rawText = String(bytes, charset)
                     if (isHtml) {
+                        val accessGate = detectAccessGate(rawText)
+                        if (accessGate != null) throw IOException(accessGate)
+
+                        val clientRedirect = extractPublicRedirect(rawText, current.toString())
+                        if (clientRedirect != null) {
+                            if (redirects >= MAX_REDIRECTS) {
+                                throw IOException("Liên kết có quá nhiều bước chuyển hướng tự động.")
+                            }
+                            current = validateUrl(current.resolve(clientRedirect.target).toString())
+                            redirects += 1
+                            onProgress(
+                                (24 + redirects * 7).coerceAtMost(50),
+                                1,
+                                "Đã nhận diện chuyển hướng ${clientRedirect.kind} ($redirects/$MAX_REDIRECTS)"
+                            )
+                            continue
+                        }
+
                         val extracted = extractHtml(rawText, current.toString())
                         onProgress(100, 3, "Đã trích xuất văn bản trang web")
                         return LinkProcessResult(
@@ -227,7 +249,98 @@ class LinkProcessor(
         private const val USER_AGENT = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Mobile Safari/537.36 TIDEUS-LINK/0.5"
         private val REDIRECT_CODES = setOf(301, 302, 303, 307, 308)
 
+
         internal data class HtmlExtraction(val title: String, val text: String)
+        internal data class RedirectCandidate(val target: String, val kind: String)
+
+        /**
+         * Follows only destinations exposed as literal public URLs in standard
+         * meta-refresh or simple inline location assignments. It does not run
+         * page JavaScript, submit forms, solve challenges, or use browser cookies.
+         */
+        internal fun extractPublicRedirect(html: String, baseUrl: String): RedirectCandidate? {
+            val document = Jsoup.parse(html, baseUrl)
+            val refresh = document.selectFirst("meta[http-equiv=refresh][content]")
+            if (refresh != null) {
+                val refreshContent = refresh.attr("content")
+                val quoted = Regex("""(?i)\\burl\\s*=\\s*['"]([^'"]+)['"]""")
+                    .find(refreshContent)?.groupValues?.getOrNull(1)
+                val unquoted = Regex("""(?i)\\burl\\s*=\\s*([^;]+)""")
+                    .find(refreshContent)?.groupValues?.getOrNull(1)
+                val target = (quoted ?: unquoted)?.trim()?.trim('"', '\\'')
+                if (!target.isNullOrBlank()) {
+                    return RedirectCandidate(target, "meta-refresh")
+                }
+            }
+
+            val inlineScripts = document.select("script:not([src])")
+                .joinToString("\\n") { script ->
+                    script.data().ifBlank { script.html() }
+                }
+
+            val assignmentPatterns = listOf(
+                Regex("""(?is)(?:window\\s*\\.\\s*)?(?:document\\s*\\.\\s*)?location(?:\\s*\\.\\s*href)?\\s*=\\s*(['"])(.*?)\\1"""),
+                Regex("""(?is)(?:window\\s*\\.\\s*)?(?:document\\s*\\.\\s*)?location\\s*\\.\\s*(?:assign|replace)\\s*\\(\\s*(['"])(.*?)\\1\\s*\\)""")
+            )
+            for (pattern in assignmentPatterns) {
+                val match = pattern.find(inlineScripts) ?: continue
+                val target = match.groupValues.getOrNull(2)
+                    ?.replace("\\\\/", "/")
+                    ?.replace("\\\\u0026", "&", ignoreCase = true)
+                    ?.replace("\\\\x3d", "=", ignoreCase = true)
+                    ?.trim()
+                    .orEmpty()
+                if (target.isNotBlank()) return RedirectCandidate(target, "JavaScript tĩnh")
+            }
+            return null
+        }
+
+        /**
+         * Reports common access gates. This is detection only: no attempt is
+         * made to bypass CAPTCHA, authentication, subscription, or anti-bot controls.
+         */
+        internal fun detectAccessGate(html: String): String? {
+            val document = Jsoup.parse(html)
+            val title = document.title().lowercase(Locale.ROOT)
+            if (title.contains("just a moment") ||
+                title.contains("attention required") ||
+                title.contains("checking your browser")) {
+                return "Trang đang yêu cầu kiểm tra trình duyệt/chống bot. Hãy mở bằng trình duyệt và tự hoàn tất xác minh."
+            }
+
+            if (document.select(
+                    "iframe[src*=recaptcha], iframe[src*=hcaptcha], .g-recaptcha, .h-captcha, [id*=captcha], input[name*=captcha]"
+                ).isNotEmpty()) {
+                return "Trang có CAPTCHA hoặc bước xác minh người dùng. TIDEUS LINK không tự giải CAPTCHA; hãy xác minh thủ công trong trình duyệt."
+            }
+
+            if (document.select("input[type=password]").isNotEmpty()) {
+                return "Trang có biểu mẫu đăng nhập. Hãy đăng nhập trực tiếp trên trang chính thức; TIDEUS LINK không lấy hoặc vượt mật khẩu."
+            }
+
+            val bodyText = document.body()?.text().orEmpty().lowercase(Locale.ROOT)
+            val paywallPhrases = listOf(
+                "subscribe to continue",
+                "subscribe to read",
+                "subscription required",
+                "this article is for subscribers",
+                "purchase access to continue",
+                "premium members only"
+            )
+            if (paywallPhrases.any { bodyText.contains(it) }) {
+                return "Nội dung có dấu hiệu yêu cầu đăng ký hoặc trả phí. TIDEUS LINK không bỏ qua paywall."
+            }
+
+            val loginPhrases = listOf(
+                "sign in to continue",
+                "log in to continue",
+                "login required to view"
+            )
+            if (loginPhrases.any { bodyText.contains(it) }) {
+                return "Trang yêu cầu đăng nhập để xem nội dung. Hãy đăng nhập trực tiếp trên trang chính thức."
+            }
+            return null
+        }
 
         internal fun validateUrl(raw: String): URI {
             val trimmed = raw.trim()
