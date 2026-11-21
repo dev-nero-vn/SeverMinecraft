@@ -1,0 +1,75 @@
+name: TIDEUS LINK Android APK
+
+on:
+  push:
+    branches: [tideus-link]
+    paths:
+      - "tideus-link/android-app/**"
+      - ".github/workflows/tideus-link-android.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.9
+      - name: Build debug APK
+        working-directory: tideus-link/android-app
+        run: gradle --no-daemon :app:assembleDebug
+      - name: Verify APK and assemble ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p tideus-link/release
+          APK="tideus-link/android-app/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          cp "$APK" tideus-link/release/TIDEUS-LINK.apk
+          cat > tideus-link/release/README-ANDROID.txt <<'EOF'
+          TIDEUS LINK Android companion (debug build)
+
+          This APK is a companion client for the TIDEUS LINK Linux Control Center.
+          On first launch, enter the HTTPS address of your deployed Linux server.
+          The Linux server must be deployed and reachable; this APK does not bundle
+          the Linux services or provider credentials.
+
+          For private LAN testing only, HTTP is accepted for localhost/private IPs.
+          Use HTTPS for remote access. The APK is debug-signed and is not a
+          Play Store/release-signed package.
+
+          Plugin adapters for Zalo OA, Messenger Page and TikTok Business,
+          AI chat, and real message delivery require their own approved OAuth
+          permissions, webhook verification, and production server configuration.
+          These services are not reported as connected in this starter.
+          EOF
+          cp -r tideus-link/android-app tideus-link/release/android-app-source
+          cp tideus-link/public/tideus-logo.svg tideus-link/release/TIDEUS-LINK-Logo.svg
+          cd tideus-link/release
+          zip -qr TIDEUS-LINK-Complete.zip TIDEUS-LINK.apk README-ANDROID.txt TIDEUS-LINK-Logo.svg android-app-source
+          cd ../..
+          test -s tideus-link/release/TIDEUS-LINK-Complete.zip
+          unzip -l tideus-link/release/TIDEUS-LINK-Complete.zip
+      - name: Upload APK and source ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: TIDEUS-LINK-Android-APK-and-Source
+          path: |
+            tideus-link/release/TIDEUS-LINK.apk
+            tideus-link/release/TIDEUS-LINK-Complete.zip
+            tideus-link/release/TIDEUS-LINK-Logo.svg
+          if-no-files-found: error
+          retention-days: 30
