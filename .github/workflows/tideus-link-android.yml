@@ -36,24 +36,31 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.9
-      - name: Verify focused bypass UI source
+      - name: Verify real link processor source
         shell: bash
         run: |
           set -euo pipefail
           ACTIVITY="tideus-link/android-app/app/src/main/java/com/tideus/link/MainActivity.kt"
+          ENGINE="tideus-link/android-app/app/src/main/java/com/tideus/link/LinkProcessor.kt"
           grep -q 'DÁN LINK CẦN BYPASS' "$ACTIVITY"
-          grep -q 'BẮT ĐẦU BYPASS' "$ACTIVITY"
+          grep -q 'BẮT ĐẦU XỬ LÝ LINK' "$ACTIVITY"
           grep -q 'TIẾN TRÌNH' "$ACTIVITY"
           grep -q 'KẾT QUẢ' "$ACTIVITY"
-          grep -q 'pasteFromClipboard' "$ACTIVITY"
-          grep -q 'beginLinkCheck' "$ACTIVITY"
+          grep -q 'LinkProcessor(applicationContext)' "$ACTIVITY"
+          grep -q 'MAX_REDIRECTS = 8' "$ENGINE"
+          grep -q 'MAX_DOWNLOAD_MB = 12' "$ENGINE"
+          grep -q 'saveToDownloads' "$ENGINE"
+          grep -q 'extractHtml' "$ENGINE"
           if grep -qE 'renderInbox|renderConversation|renderPlugins|bottomNavigation' "$ACTIVITY"; then
-            echo "Old inbox/plugin navigation must not remain in the focused bypass UI."
+            echo "The focused bypass screen must not contain old chat navigation."
             exit 1
           fi
       - name: Build debug APK
         working-directory: tideus-link/android-app
         run: gradle --no-daemon :app:assembleDebug
+      - name: Run link processor unit and live network tests
+        working-directory: tideus-link/android-app
+        run: gradle --no-daemon :app:testDebugUnitTest
       - name: Verify APK and package APK-only ZIP
         shell: bash
         run: |
