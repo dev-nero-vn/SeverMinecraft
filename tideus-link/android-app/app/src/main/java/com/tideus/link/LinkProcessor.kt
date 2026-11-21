@@ -92,7 +92,8 @@ class LinkProcessor(private val context: Context) {
                     throw IOException("Tệp vượt quá giới hạn ${MAX_DOWNLOAD_MB} MB của phiên bản này.")
                 }
 
-                val contentType = connection.contentType
+                val contentTypeHeader = connection.contentType
+                val contentType = contentTypeHeader
                     ?.substringBefore(";")
                     ?.trim()
                     ?.lowercase(Locale.ROOT)
@@ -130,7 +131,7 @@ class LinkProcessor(private val context: Context) {
                     contentType.contains("javascript")
 
                 if (isText && !disposition.contains("attachment", ignoreCase = true)) {
-                    val charset = parseCharset(connection.contentType)
+                    val charset = parseCharset(contentTypeHeader)
                     val rawText = String(bytes, charset)
                     if (isHtml) {
                         val extracted = extractHtml(rawText, current.toString())
