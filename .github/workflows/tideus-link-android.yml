@@ -5,6 +5,14 @@ on:
     branches: [tideus-link]
     paths:
       - "tideus-link/android-app/**"
+      - "tideus-link/src/**"
+      - "tideus-link/public/**"
+      - "tideus-link/test/**"
+      - "tideus-link/package.json"
+      - "tideus-link/Dockerfile"
+      - "tideus-link/compose.yaml"
+      - "tideus-link/README.md"
+      - "tideus-link/DEPLOY.md"
       - "tideus-link/public/tideus-logo.svg"
       - ".github/workflows/tideus-link-android.yml"
   workflow_dispatch:
@@ -66,9 +74,13 @@ jobs:
           These services are not reported as connected in this starter.
           EOF
           cp -r tideus-link/android-app tideus-link/release/android-app-source
+          rm -rf tideus-link/release/android-app-source/.gradle tideus-link/release/android-app-source/build tideus-link/release/android-app-source/app/build
           cp tideus-link/public/tideus-logo.svg tideus-link/release/TIDEUS-LINK-Logo.svg
+          mkdir -p tideus-link/release/linux-server-source
+          cp tideus-link/package.json tideus-link/.env.example tideus-link/Dockerfile tideus-link/compose.yaml tideus-link/README.md tideus-link/DEPLOY.md tideus-link/release/linux-server-source/
+          cp -r tideus-link/src tideus-link/public tideus-link/test tideus-link/release/linux-server-source/
           cd tideus-link/release
-          zip -qr TIDEUS-LINK-Complete.zip TIDEUS-LINK.apk README-ANDROID.txt TIDEUS-LINK-Logo.svg android-app-source
+          zip -qr TIDEUS-LINK-Complete.zip TIDEUS-LINK.apk README-ANDROID.txt TIDEUS-LINK-Logo.svg android-app-source linux-server-source
           cd ../..
           test -s tideus-link/release/TIDEUS-LINK-Complete.zip
           unzip -l tideus-link/release/TIDEUS-LINK-Complete.zip
