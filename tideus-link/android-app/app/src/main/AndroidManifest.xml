@@ -9,7 +9,6 @@
         android:icon="@drawable/ic_tideus_logo"
         android:roundIcon="@drawable/ic_tideus_logo"
         android:theme="@style/AppTheme"
-        android:usesCleartextTraffic="true"
         android:supportsRtl="true">
         <activity
             android:name=".MainActivity"
