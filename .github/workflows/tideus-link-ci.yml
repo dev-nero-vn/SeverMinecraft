@@ -34,5 +34,52 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Validate JavaScript
         run: npm run build
-      - name: Run tests
+      - name: Run unit tests
         run: npm test
+      - name: Build Linux container
+        run: docker build -t tideus-link:ci .
+      - name: Smoke test container and owner login
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker volume create tideus-ci-data >/dev/null
+          docker run -d --name tideus-ci \
+            -p 127.0.0.1:8787:8787 \
+            -e NODE_ENV=production \
+            -e HOST=0.0.0.0 \
+            -e PORT=8787 \
+            -e DATA_DIR=/app/data \
+            -e DASHBOARD_USER=owner \
+            -e DASHBOARD_PASSWORD=ci-test-password-long-enough \
+            -e DASHBOARD_SESSION_SECRET=ci-session-secret-with-more-than-thirty-two-bytes \
+            -v tideus-ci-data:/app/data \
+            tideus-link:ci
+          cleanup() {
+            docker rm -f tideus-ci >/dev/null 2>&1 || true
+            docker volume rm tideus-ci-data >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          for attempt in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:8787/api/health >/tmp/tideus-health.json; then
+              break
+            fi
+            sleep 1
+          done
+          grep -q '"ok":true' /tmp/tideus-health.json
+          curl --silent --show-error --fail \
+            -c /tmp/tideus-cookie.txt \
+            -H 'Content-Type: application/json' \
+            -d '{"username":"owner","password":"ci-test-password-long-enough"}' \
+            http://127.0.0.1:8787/api/login >/tmp/tideus-login.json
+          grep -q '"ok":true' /tmp/tideus-login.json
+          curl --silent --show-error --fail \
+            -b /tmp/tideus-cookie.txt \
+            http://127.0.0.1:8787/api/session >/tmp/tideus-session.json
+          grep -q '"user":"owner"' /tmp/tideus-session.json
+          curl --silent --show-error --fail \
+            -b /tmp/tideus-cookie.txt \
+            http://127.0.0.1:8787/api/plugins >/tmp/tideus-plugins.json
+          grep -q '"zalo"' /tmp/tideus-plugins.json
+          grep -q '"messenger"' /tmp/tideus-plugins.json
+          grep -q '"tiktok"' /tmp/tideus-plugins.json
+          echo "Container health, Owner login, session cookie, and plugin registry passed."
