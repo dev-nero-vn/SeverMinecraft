@@ -491,7 +491,7 @@ class MainActivity : Activity() {
     private fun bottomNavigation(active: String): LinearLayout {
         val nav = horizontal().apply {
             gravity = Gravity.CENTER
-            background = panel
+            setBackgroundColor(panel)
             setPadding(dp(5), dp(8), dp(5), dp(8))
         }
         val tabs = listOf(
