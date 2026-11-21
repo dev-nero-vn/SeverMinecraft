@@ -30,7 +30,10 @@ data class LinkProcessResult(
     val savedUri: Uri? = null
 )
 
-class LinkProcessor(\n    private val context: Context? = null,\n    private val fileSink: ((ByteArray, String, String) -> Pair<Uri?, String>)? = null\n) {
+class LinkProcessor(
+    private val context: Context? = null,
+    private val fileSink: ((ByteArray, String, String) -> Pair<Uri?, String>)? = null
+) {
 
     fun process(
         rawUrl: String,
