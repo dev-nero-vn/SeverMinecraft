@@ -130,7 +130,7 @@ class MainActivity : Activity() {
         val urlInput = EditText(this).apply {
             setSingleLine(true)
             textSize = 14f
-            setTextColor(text)
+            setTextColor(primaryTextColor)
             setHintTextColor(muted)
             hint = "https://tideus.example.com"
             setText(prefill ?: "")
@@ -226,7 +226,7 @@ class MainActivity : Activity() {
         val title = TextView(this).apply {
             text = "TIDEUS LINK"
             textSize = 13f
-            setTextColor(text)
+            setTextColor(primaryTextColor)
             setTypeface(typeface, Typeface.BOLD)
             setPadding(dp(12), 0, 0, 0)
         }
