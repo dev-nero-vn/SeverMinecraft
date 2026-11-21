@@ -61,12 +61,25 @@ class LinkProcessorTest {
     @Test
     fun followsARealPublicHttpRedirect() {
         // httpbin responds with an HTTP redirect to the public example.com page.
-        val processor = LinkProcessor(ContextWrapper(null))
+        val processor = LinkProcessor()
         val redirect = "https://httpbin.org/redirect-to?url=https%3A%2F%2Fexample.com"
         val result = processor.process(redirect) { _, _, _ -> }
         assertFalse(result.isFile)
         assertEquals("example.com", URI(result.finalUrl).host)
         assertTrue(result.extractedText.contains("Example Domain"))
+    }
+
+    @Test
+    fun downloadsARealPublicBinaryFile() {
+        val directory = Files.createTempDirectory("tideus-link-test").toFile()
+        val processor = LinkProcessor(fileSink = { bytes, name, _ ->
+            val output = File(directory, name)
+            output.writeBytes(bytes)
+            null to output.absolutePath
+        })
+        val result = processor.process("https://httpbin.org/bytes/128") { _, _, _ -> }
+        assertTrue(result.isFile)
+        assertEquals(128L, File(result.savedLocation!!).length())
     }
 
     private fun assertThrowsIOException(block: () -> Unit) {
