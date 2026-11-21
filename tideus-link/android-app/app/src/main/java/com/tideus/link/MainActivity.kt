@@ -32,7 +32,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import android.graphics.Bitmap
-import android.webkit.SslError
+import android.net.http.SslError
 import java.net.URI
 import java.util.Locale
 
@@ -46,7 +46,7 @@ class MainActivity : Activity() {
     private val bg = Color.rgb(8, 13, 25)
     private val panel = Color.rgb(17, 26, 43)
     private val panel2 = Color.rgb(22, 34, 55)
-    private val text = Color.rgb(237, 243, 255)
+    private val primaryTextColor = Color.rgb(237, 243, 255)
     private val muted = Color.rgb(145, 162, 187)
     private val cyan = Color.rgb(80, 214, 220)
     private val purple = Color.rgb(146, 112, 255)
@@ -68,7 +68,7 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun label(value: String, size: Float, color: Int = text, bold: Boolean = false): TextView {
+    private fun label(value: String, size: Float, color: Int = primaryTextColor, bold: Boolean = false): TextView {
         return TextView(this).apply {
             text = value
             textSize = size
@@ -82,7 +82,7 @@ class MainActivity : Activity() {
             text = value
             textSize = 14f
             isAllCaps = false
-            setTextColor(text)
+            setTextColor(primaryTextColor)
             background = rounded(if (primary) Color.rgb(87, 80, 238) else panel2, 14f, if (primary) purple else Color.rgb(49, 67, 96))
             minHeight = dp(50)
             stateListAnimator = null
@@ -113,7 +113,7 @@ class MainActivity : Activity() {
         column.addView(logo, LinearLayout.LayoutParams(dp(116), dp(116)).apply {
             bottomMargin = dp(16)
         })
-        column.addView(label("TIDEUS LINK", 27f, text, true))
+        column.addView(label("TIDEUS LINK", 27f, primaryTextColor, true))
         column.addView(label("LINUX CONTROL CENTER", 11f, cyan, true).apply {
             letterSpacing = 0.16f
             setPadding(0, dp(5), 0, dp(26))
@@ -123,7 +123,7 @@ class MainActivity : Activity() {
             background = rounded(panel, 22f, Color.rgb(43, 58, 83))
             setPadding(dp(20), dp(20), dp(20), dp(20))
         }
-        card.addView(label("Kết nối máy chủ Linux", 19f, text, true))
+        card.addView(label("Kết nối máy chủ Linux", 19f, primaryTextColor, true))
         card.addView(label("Nhập địa chỉ TIDEUS LINK Control Center đã triển khai trên máy chủ của bạn.", 12f, muted).apply {
             setPadding(0, dp(8), 0, dp(18))
         })
