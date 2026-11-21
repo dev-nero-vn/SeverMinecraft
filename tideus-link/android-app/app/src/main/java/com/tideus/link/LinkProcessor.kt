@@ -48,7 +48,7 @@ class LinkProcessor(
         try {
             while (true) {
                 validatePublicHost(current.host)
-                onProgress(18 + redirects * 4, 1, "Đang kết nối ${current.host}")
+                onProgress(18 + redirects * 3, 1, "Đang kết nối ${current.host}")
 
                 val connection = (URL(current.toString()).openConnection() as HttpURLConnection).apply {
                     requestMethod = "GET"
@@ -72,7 +72,7 @@ class LinkProcessor(
                     if (redirects >= MAX_REDIRECTS) throw IOException("Liên kết chuyển hướng quá nhiều lần.")
                     current = validateUrl(current.resolve(location).toString())
                     redirects += 1
-                    onProgress(20 + redirects * 5, 1, "Đã theo chuyển hướng $redirects/$MAX_REDIRECTS")
+                    onProgress(20 + redirects * 3, 1, "Đã theo chuyển hướng $redirects/$MAX_REDIRECTS")
                     continue
                 }
 
@@ -259,7 +259,7 @@ class LinkProcessor(
             val bytes = address.address
             if (address is Inet6Address && bytes.size == 16) {
                 val mappedV4 = bytes.copyOfRange(0, 10).all { it.toInt() == 0 } &&
-                    bytes[10].toInt() == 0xff && bytes[11].toInt() == 0xff
+                    (bytes[10].toInt() and 0xff) == 0xff && (bytes[11].toInt() and 0xff) == 0xff
                 if (mappedV4) {
                     val v4 = InetAddress.getByAddress(bytes.copyOfRange(12, 16))
                     return isPublicIpv4(v4.address)
