@@ -1,6 +1,6 @@
 # TIDEUS LINK — Linux Control Center
 
-TIDEUS LINK is being built as a Linux-hosted, desktop-style control center for connected messaging platforms. Discord has been deliberately excluded from this project.
+TIDEUS LINK is being built as a Linux-hosted, desktop-style control center for connected messaging platforms.
 
 ## Implemented foundation
 
