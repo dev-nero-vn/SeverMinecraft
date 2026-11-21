@@ -163,7 +163,7 @@ class MainActivity : Activity() {
             setHintTextColor(secondaryText)
             setTextColor(primaryText)
             textSize = 12f
-            singleLine = true
+            setSingleLine(true)
             setPadding(dp(14), 0, dp(14), 0)
             background = rounded(panelAlt, 13, line)
         }
@@ -320,7 +320,7 @@ class MainActivity : Activity() {
         val composer = horizontal().apply {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(12), dp(10), dp(12), dp(10))
-            background = panel
+            setBackgroundColor(panel)
         }
         val input = EditText(this).apply {
             hint = "Nhập tin nhắn…"
