@@ -1,13 +1,17 @@
 package com.tideus.link
 
 import android.app.Activity
+import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -18,7 +22,6 @@ import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
-import java.net.URI
 
 class MainActivity : Activity() {
 
@@ -41,6 +44,14 @@ class MainActivity : Activity() {
     private var progressSteps: List<TextView> = emptyList()
     private var resultStatus: TextView? = null
     private var resultValue: TextView? = null
+    private var resultCopyButton: TextView? = null
+    private var resultOpenButton: TextView? = null
+    private var startButton: TextView? = null
+    private var savedFileUri: Uri? = null
+    private var savedFileMime: String = "application/octet-stream"
+    private var copiedResultText: String = ""
+    private var isProcessing = false
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -188,9 +199,16 @@ class MainActivity : Activity() {
         page.addView(inputCard)
 
         gap(page, 13)
-        val start = actionButton("BẮT ĐẦU BYPASS  →", purple)
+        val start = actionButton("✦  BẮT ĐẦU XỬ LÝ LINK  →", purple)
         start.textSize = 14f
-        start.setPadding(dp(16), dp(16), dp(16), dp(16))
+        start.letterSpacing = 0.025f
+        start.setPadding(dp(16), dp(17), dp(16), dp(17))
+        start.background = GradientDrawable(
+            GradientDrawable.Orientation.LEFT_RIGHT,
+            intArrayOf(Color.rgb(139, 78, 255), Color.rgb(91, 91, 255), Color.rgb(49, 184, 218))
+        ).apply { cornerRadius = dp(18).toFloat() }
+        start.elevation = dp(7).toFloat()
+        startButton = start
         start.setOnClickListener { beginLinkCheck() }
         page.addView(start, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
@@ -257,6 +275,24 @@ class MainActivity : Activity() {
         )
         resultValue?.setLineSpacing(dp(2).toFloat(), 1f)
         resultCard.addView(resultValue)
+
+        gap(resultCard, 12)
+        val resultActions = horizontal().apply { gravity = Gravity.CENTER_VERTICAL }
+        resultCopyButton = actionButton("Sao chép văn bản", panelAlt, cyan).apply {
+            visibility = View.GONE
+            textSize = 11f
+            setOnClickListener { copyResult() }
+        }
+        resultOpenButton = actionButton("Mở tệp", panelAlt, green).apply {
+            visibility = View.GONE
+            textSize = 11f
+            setOnClickListener { openSavedFile() }
+        }
+        resultActions.addView(resultCopyButton, LinearLayout.LayoutParams(0, dp(42), 1f))
+        resultActions.addView(resultOpenButton, LinearLayout.LayoutParams(0, dp(42), 1f).apply {
+            leftMargin = dp(8)
+        })
+        resultCard.addView(resultActions)
         page.addView(resultCard)
 
         gap(page, 14)
@@ -287,50 +323,134 @@ class MainActivity : Activity() {
     }
 
     private fun beginLinkCheck() {
+        if (isProcessing) return
         val raw = linkInput?.text?.toString()?.trim().orEmpty()
-        val uri = runCatching { URI(raw) }.getOrNull()
-        val valid = uri != null &&
-            (uri.scheme.equals("http", true) || uri.scheme.equals("https", true)) &&
-            !uri.host.isNullOrBlank() &&
-            uri.userInfo == null
-
-        if (!valid) {
-            progressStatus?.text = "Link chưa hợp lệ. Hãy nhập URL bắt đầu bằng http:// hoặc https://."
+        if (raw.isBlank()) {
+            progressStatus?.text = "Hãy dán một liên kết HTTPS trước."
             progressStatus?.setTextColor(red)
-            resultStatus?.text = "Không thể bắt đầu"
+            resultStatus?.text = "Chưa có đường dẫn"
             resultStatus?.setTextColor(red)
-            resultValue?.text = "Kiểm tra lại đường dẫn rồi thử lại."
-            progressBar?.progress = 0
-            progressPercent?.text = "0%"
-            progressSteps.forEach { marker ->
-                marker.text = "○"
-                marker.setTextColor(textMuted)
-            }
-            Toast.makeText(this, "Đường dẫn không hợp lệ.", Toast.LENGTH_SHORT).show()
             return
         }
 
-        progressBar?.progress = 20
-        progressPercent?.text = "20%"
-        progressStatus?.text = "Link hợp lệ. Đang chờ kết nối bộ xử lý."
-        progressStatus?.setTextColor(amber)
+        isProcessing = true
+        savedFileUri = null
+        copiedResultText = ""
+        resultCopyButton?.visibility = View.GONE
+        resultOpenButton?.visibility = View.GONE
+        resultStatus?.text = "Đang xử lý liên kết"
+        resultStatus?.setTextColor(amber)
+        resultValue?.text = "Đang kết nối và phân tích trang đích…"
+        startButton?.isEnabled = false
+        startButton?.alpha = 0.65f
+        startButton?.text = "ĐANG XỬ LÝ…"
+        updateProgress(3, 0, "Đang chuẩn bị kết nối")
+
+        Thread({
+            try {
+                val processor = LinkProcessor(applicationContext)
+                val result = processor.process(raw) { percent, stepIndex, message ->
+                    mainHandler.post { updateProgress(percent, stepIndex, message) }
+                }
+                mainHandler.post {
+                    isProcessing = false
+                    startButton?.isEnabled = true
+                    startButton?.alpha = 1f
+                    startButton?.text = "↻  XỬ LÝ LIÊN KẾT KHÁC"
+                    progressBar?.progress = 100
+                    progressPercent?.text = "100%"
+                    progressStatus?.text = "Hoàn tất xử lý"
+                    progressStatus?.setTextColor(green)
+                    progressSteps.forEach { marker ->
+                        marker.text = "✓"
+                        marker.setTextColor(green)
+                    }
+                    resultStatus?.text = if (result.isFile) "Đã tải tệp xuống" else "Đã trích xuất văn bản"
+                    resultStatus?.setTextColor(green)
+                    copiedResultText = buildString {
+                        append(result.pageTitle)
+                        append("\n\n")
+                        append(result.extractedText)
+                        append("\n\nNguồn: ")
+                        append(result.finalUrl)
+                    }
+                    resultValue?.text = copiedResultText
+                    savedFileUri = result.savedUri
+                    savedFileMime = result.contentType
+                    resultCopyButton?.visibility = View.VISIBLE
+                    resultOpenButton?.visibility = if (result.savedUri != null) View.VISIBLE else View.GONE
+                    Toast.makeText(
+                        this,
+                        if (result.isFile) "Đã lưu tệp vào Downloads/TIDEUS LINK." else "Đã trích xuất văn bản thành công.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            } catch (error: Exception) {
+                val message = error.message?.takeIf { it.isNotBlank() } ?: "Không thể xử lý liên kết này."
+                mainHandler.post {
+                    isProcessing = false
+                    startButton?.isEnabled = true
+                    startButton?.alpha = 1f
+                    startButton?.text = "↻  THỬ LẠI"
+                    progressStatus?.text = message
+                    progressStatus?.setTextColor(red)
+                    resultStatus?.text = "Không thể xử lý"
+                    resultStatus?.setTextColor(red)
+                    resultValue?.text = "Không có kết quả được tạo. $message"
+                    resultCopyButton?.visibility = View.GONE
+                    resultOpenButton?.visibility = View.GONE
+                    Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                }
+            }
+        }, "tideus-link-processor").start()
+    }
+
+    private fun updateProgress(percent: Int, stepIndex: Int, message: String) {
+        val safePercent = percent.coerceIn(0, 100)
+        progressBar?.progress = safePercent
+        progressPercent?.text = "$safePercent%"
+        progressStatus?.text = message
+        progressStatus?.setTextColor(cyan)
         progressSteps.forEachIndexed { index, marker ->
-            if (index == 0) {
-                marker.text = "✓"
-                marker.setTextColor(green)
-            } else {
-                marker.text = "○"
-                marker.setTextColor(textMuted)
+            when {
+                index < stepIndex -> {
+                    marker.text = "✓"
+                    marker.setTextColor(green)
+                }
+                index == stepIndex -> {
+                    marker.text = "●"
+                    marker.setTextColor(cyan)
+                }
+                else -> {
+                    marker.text = "○"
+                    marker.setTextColor(textMuted)
+                }
             }
         }
-        resultStatus?.text = "Chưa xử lý"
-        resultStatus?.setTextColor(amber)
-        resultValue?.text =
-            "Ứng dụng đã kiểm tra định dạng link. Bộ xử lý bypass chưa được kết nối nên chưa thể phân tích trang đích hoặc trả nội dung / tệp."
-        Toast.makeText(this, "Đã kiểm tra link. Bộ xử lý chưa được kết nối.", Toast.LENGTH_LONG).show()
+    }
+
+    private fun copyResult() {
+        if (copiedResultText.isBlank()) return
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("TIDEUS LINK result", copiedResultText))
+        Toast.makeText(this, "Đã sao chép kết quả.", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun openSavedFile() {
+        val uri = savedFileUri ?: return
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, savedFileMime)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        try {
+            startActivity(intent)
+        } catch (_: Exception) {
+            Toast.makeText(this, "Không tìm thấy ứng dụng mở loại tệp này.", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun resetProgress() {
+        if (isProcessing) return
         progressBar?.progress = 0
         progressPercent?.text = "0%"
         progressStatus?.text = "Đang chờ bạn dán link"
@@ -342,6 +462,13 @@ class MainActivity : Activity() {
         resultStatus?.text = "Chưa có kết quả"
         resultStatus?.setTextColor(textMuted)
         resultValue?.text =
-            "Kết quả xử lý sẽ hiển thị tại đây. Nội dung văn bản có thể sao chép; tệp được hỗ trợ sẽ có tùy chọn tải xuống."
+            "Kết quả trích xuất sẽ hiển thị tại đây. Văn bản có thể sao chép; tệp tải xuống sẽ lưu trong Downloads/TIDEUS LINK."
+        resultCopyButton?.visibility = View.GONE
+        resultOpenButton?.visibility = View.GONE
+        savedFileUri = null
+        copiedResultText = ""
+        startButton?.isEnabled = true
+        startButton?.alpha = 1f
+        startButton?.text = "✦  BẮT ĐẦU XỬ LÝ LINK  →"
     }
 }
