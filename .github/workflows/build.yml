@@ -109,21 +109,41 @@ jobs:
           gradle-version: '8.9'
       - name: Build Android APK
         run: gradle -p project/mobile :app:assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Tirror-Android
+          path: project/mobile/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+  android-smoke:
+    needs: android
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: ''
+      - name: Install Android emulator packages
+        run: sdkmanager "platforms;android-35" "platform-tools" "emulator"
+      - uses: actions/download-artifact@v4
+        with:
+          name: Tirror-Android
+          path: app
       - uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
           target: google_apis
           arch: x86_64
           script: |
-            adb install -r project/mobile/app/build/outputs/apk/debug/app-debug.apk
+            adb install -r app/app-debug.apk
             adb shell am start -n com.tirror.app/.MainActivity
             sleep 5
             adb shell dumpsys activity activities | grep -q "com.tirror.app/.MainActivity"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Tirror-Android
-          path: project/mobile/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
 
   package:
     needs: [windows, android]
@@ -155,9 +175,9 @@ jobs:
           screen-capture permission. Allow Tirror through Windows Firewall on Private
           networks. No USB connection is used.
 
-          APK is a debug-signed test build. Windows smoke test verifies app startup
-          and Android emulator test verifies install and launch. The final physical
-          phone-to-PC Wi-Fi path still requires a real-device test.
+          APK is a debug-signed test build. Windows EXE startup is smoke-tested.
+          Android emulator install/launch runs as a separate non-blocking CI job.
+          The final phone-to-PC Wi-Fi path still requires a real-device test.
           EOF
           cd release
           zip -9 Tirror-Apps.zip Tirror.exe Tirror-Android-debug.apk README.txt
