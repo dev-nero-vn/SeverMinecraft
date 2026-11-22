@@ -363,3 +363,15 @@ mirror = mirror.replace(
 mirror = mirror.replace('            frame_size = OUTPUT_WIDTH * OUTPUT_HEIGHT * 3\n', '            frame_size = self.output_width * self.output_height * 3\n', 1)
 mirror_path.write_text(mirror, encoding="utf-8")
 print("Patched orientation scaling and hidden FFmpeg console:", mirror_path)
+
+# Keep the H.264 integration assertion aligned with the negotiated dynamic frame size.
+test_path = path.parent.parent / "tests" / "test_mirroring.py"
+if test_path.exists():
+    test_source = test_path.read_text(encoding="utf-8")
+    test_source = test_source.replace(
+        "assert len(frame) == OUTPUT_WIDTH * OUTPUT_HEIGHT * 3",
+        "assert len(frame) == receiver.output_width * receiver.output_height * 3",
+        1,
+    )
+    test_path.write_text(test_source, encoding="utf-8")
+    print("Updated H.264 test for dynamic output dimensions:", test_path)
