@@ -113,6 +113,8 @@ jobs:
           if-no-files-found: error
       - name: Align Java and Kotlin JVM targets
         run: python ci/fix_android_jvm_target.py project/mobile/app/build.gradle.kts
+      - name: Enable touch scrolling for Android screens
+        run: python ci/patch_android_scroll.py project/mobile/app/src/main/java/com/tirror/app/MainActivity.kt
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
