@@ -33,6 +33,12 @@ jobs:
       - name: Run pairing and H.264 receiver tests
         working-directory: project
         run: python -m pytest -q
+      - name: Export desktop source for window update
+        uses: actions/upload-artifact@v4
+        with:
+          name: Tirror-Desktop-Source
+          path: project/desktop
+          if-no-files-found: error
 
   windows:
     needs: test
