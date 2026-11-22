@@ -1,6 +1,365 @@
-# Compressed patch payload. Keep this wrapper simple so CI applies the same tested patch.
-import base64
-import gzip
+from pathlib import Path
+import re
+import sys
 
-_PAYLOAD = "H4sIAAAAAAAC/809a3PcyHHf+SvmcKUiVlqC++aS8t4VRS5PKuskRqQsO8erLSwWu4sjFoAALMm1oio7/pByfC6fy8mdz3Zi+VTnRxxXznEqLouVygde+X9QvyA/Id0zg/cAC+qunPCDRAAzPd09Pf2anuHYtWfEUf2paQyJMXNs1yf78LjCf3f14Ddv4a2sYEvSoy1keKGo7uTknfq7xBgTU7fCVxXyBqkT3fR0Ijmu/Z6u+esj3Tv2bWd9phqW4iykyopnz11NB3AIVXF1dTTw9TNf1i3NHhnWpCfN/fFaF1qurIz0MeDimKqmD2xL02XbHG0Rz3erxNJP6W8VsvYGuWdb+tYKgZ+JaQ9Vk7BB6BtAEnoRy/aJYfEPrC3+uKoB6B4sPF+f9c8MXx5LQKY2JT5QpPu029ieWzDsEwDzzla9UXv3NfcpoIfdQ2LYLwpHFvGkKFZJHelI0EA7rgYIeLo5VgaP3YExmwAcpOTISn4czg1zNPD8hal7cuVm8u1UN83opTe1TweOOtFl6dBVrQnRppfnv5Iqq9USo64K2swM17XdwalhjezTMi1PDL1UO09zdd0q05Kybgoc1d3yqAK7VH/uFXZwXB2xXcqDU9U0HdXRAZWp7dsl2w5VTy9sOojaurpnfFMfvGcPi3vg9FqDsavO9IGnP4bGa/Wcpqbq657P2w4X8FAI2tU12x0NTl3DX8JmwxuwxrBWoeGeCuu9EOZw7vu2BZ3GS4gzRvpQdQeabZqq4+mjYuhAIdAHGkBXZ4ORMSum70taRJXCtTy2XWIBv6uGZluobd5JQqhKL9//W6lSlaX96cW/09fG5Yv/nuOHD5/TD4f0jU+Gl+ffi72+C4+glLzL89/h24/+SN/uXDwzyOc/vHzxRx/f/uRjBsK9PH9OJsbFCwfevknfvWVcnv/UID5AP/87Ot6PfixV3t1K64XyFPzlEa0kWR/irJug4hHpXi/N1y0+o4EmwTmtgIBUyepqpWgm/WPlrjrUTRn0v6HpVbRQPenlz35EyCGFRazp5YvfWeTk4hlQcPniuUFmF8+JOb88/xEgcAKybJPbSqPTIv7l+W+BeCTIAsLsyxe/MMjjuUoeGWt7QCp9nl2ef6qRJPqKVB3blt+TpQN9Yuvk4R2pulmVhqAKgVdjsJSv15sb2+2aVB3iQ397r7tXl6qqpU1ttyedSlVHHZ316i38f9Gr1yqKo2rH8tgwzZ50ljULBWR/dWpkiBhevvg3n87rr+YB0tWAQUD275GsnwN/VJuMWNczfQaMemaR6cW/WlNyQmf7eDoHqtPQkbX+VIVW2sV/IFeARX8RlhRLBvDoFtVosmufcg69jWQ6qTVNdU0PEIWlNFLdhXLI+klVzZ7NVGvUM9XZcKRuZbROSoorHEdUkD3JNSZTPyQjO4Ui/L6e4HoZ1BhOtqNbg4RdXYIK6Ec0qWDSZjrM4wiVsru6SrFDZ24wU4/1EGJg/2QcrRI5ZWN0T/fv3A1c0zszYMuuq4I7RX/dM0ywUmHzU2PkT6tkqiM6MGB9s1EDx6vWrYVNDOwGn2h3BRwzWXrw1i2pSuRE50qVSK/XNtobtza4g0cRh5GDvoiFgv/IFCS0BzjbscavkwN77MPaRm55a0NzroMe9RzDBYM2cdWRoVu+R4DHBL65+NakeIPqnXnKSlwTL1ADo/bVZY5fxCM614DVgqyTmXom10MGrKHPGW8GBtVGmy4bli93yQ1Sb1xHUvFxA5877fC5vtGGF+0WvEgCQSYopmHpsgzMXVQDri+gI108dJQk0xQwqwZYcplx+XpNaULfNYYnPLXbHMz1ulLrBgTAh812AFXeaMBUdjpV0sDW9XatkjfGWjBIIw6q2QjGqCmdWvihrjRa4RjwGvvUqdjU25VlVLTiA7RrERGNRmyAZjccoNnm0Bv8t9gQru7PXYtJqDKmki3HpFx5S517nqFat0Ba5FYLeq5Eqym1kLgjSddTlQz0E5C1HjpFMcEBYynw7A2POk8ELRuEPNkWCvw3tgf6meH54EAlBZHRkBlC7OHCUDhEFLOF4uwutkQjq2Pgw0ADHQ6WKR9wUl71M013fLRoh5rZR3BbEHF63kopHzwPC7leh1lkXVXHMRd5UxCfpcKGad23NDSIqT1LiGnYwERTDk0gjlV93+VSIWUQoe1AF1JBiU8ijhATDAaPvygUAJzJxPe0ikaN1WnRlWNxyaJN5AqsGfzYaiQ+so5ySifxEEsUeAG63PUTGpwkHE9TTRpuYFeFz0vGMjDb8UD31JkDinCi3N2+t/PX9w9SsMQRI+18eKzs4zN9kNmoyd6UxQpY5bExmbs6MzI9EUzBqDCRC3vuJw12jFTBkhBNYiS4WfOfltZcZZK/whMvcmEUqpv8sF8Z6Ri5GONFGM4lv0Os4Od8Gtva3BuA3QWfryIcLyXlZXiKPwm1w1YttrcdExQ002iVlcKsC/wSB6D4hm9idMo87Zff+odU5AAeNXWZRxefLGK+CXad6Da4Zu5CluqNbu2sW6ulGszAW0H57+IKbHdqlcSqpk0wtwLDf9MGUCOpUMAyxMeEm3rotVvtnVu7kmAUnMih4c9UR4YoX94+OOgfHoC3I/mUbPwuVTKD9+l/hm2J1P2p4U/RpMspfmeyNuV0xxXWenaUUM/gPFQJTESRjskRkKQOZ4LFIjjgYJXkq48qGY566A6BcqP+J0Tc2rGle16vVmoshSU6zxDIAv9xdZNqzF6d/s7UZq8uBkYFOAdpFrIc3nnw4P4DAsL9CSGP7jzo3+0fHJDdOwf7d7e/AcYqEwYStMxBJChcvjk/GDWeTg1fBxhUJOud1q3uDjyxwKZDf1n0NpeSEvIE/UAILrtFyzrKUCbIT+pLZIU8ll5+9ANCPv9AjVb4FnkSA6momm+c6IORfgJh+1MppVMxZ6epno8ZO5aeTwC8PP+nTPB9TJM71uX5D400O4s5T9n5+h79eTWGJtjDWQoCBR0VGOestxZwt0qCsN7SJe5wZZLHUzBCLMHHOL2HCVEmaMMkpsn1MIQwd+Ji5h8a7e70u3ubknC5NCtFAwdZ7nDkHOQCTtXqu80Njs1ywKHA1TeQJa0g1uk1o1Cn12nnQPIcHRScWx67dqPT2NguxE4DKK5aHmS3tlnb7haCtNST8vAS05kLb4CzG195qe+BEnr5rT+JVU03EPSIJbHR88edgsUsM+5H3xOP23zFcV1dg1CwzMgffvLFRsa8Bcgg7p2BpyOLGF8VsqWag3QlE0kA7HgWytTHPqCjnzmYuDp05zoPu0El+dNcxZDYVSqSLrrSOLm1W/Wd5k4Oo2Mg42qL2caSNjJmEwQIRQME+Ow26q2OFK71RjcNK5XeFH0dOK7tqBP06eh+S8wXC6WFtg6EZHOrVRdKSTdlBxJmleNaEcwdswuNpQNTs8XS5uTlh5+JcSg7Ns9eFg2ex3uGTS2XD81OISO4EDFkYqlphgqaN2ofZfwtnioqi9ghmPTfkKlqcPeJxQk5TlOwrm/t7Db22mVxbAc4YsosnjFTHWcwcY3RFWQ4vaYCEHHRpUs5tcjZxAWYtJIAgN90S/AdWfqfn7//AfSVDl265zCaL8DV8XFqZOnlz76Ln/oz1TD5mw9/iW8uX3xiTfmbn3yMb+KbWHkeJnb/T2z8NdwA4t0//i2+uTcFx0rjr378A3z1+QcJp4t/+4hi9PbFLxbk8sVzikT+YM8pYQDFCSB/m+Jq2vMRf/P+P9I2F/86I8foO874+7//Z0rn+a8xULw8/9SaSJV3E3rcGJ1By4m5cKZVlpqooFLXrTkaeVAXIaNTSlpLuVvBjObNeNBHwUa4b9GDodfXW1XMXc9nFj5egydwYbXjBfh7nh6JIp//dhJcuFY06hzQhcEpSa0C0p/Z7xm4FjZFq7XRam1v9KXAswozvKC2mYCG66BZWY4C5aJoIW4E67Df2atFrnNyHSbNLPAm2iBoVbaihYP/DBjronAbnoGIjMkZ2YErVGaxNlrNfqcjJbsnbUyoUQMV0aTuQxJ3OhXUQwgWA1+JwWLlywBXY3rXI2ArDl1yZjvimaW0hD4zx3ejUuxd5DgUvPBFrKMFnkS71q0J4o6lcTiOw9wLzFWBLyTnIMTrKb5I2LPZb+01xWFPTmAfFHH46pANzPciBW2WOtl58TxdJq12p74RLpP+7l6LksMC4SQVu/3tGKngdxn6uCeNTRUmNrVRFt/89O3JxAzzPyHS2tz10BZOoWVDWsoF4drYCJYGOEyodIy0BRMBY3U01Ka9m9ouUEejAE/ftk00Ij9gSv8Z7q7baEekarIYQtU0YJA/wDxrwDcu38uAM6uzA17Gpw63UQFwTXV8UDaDRJWXN7X95VDZgv+rubpg5RMhzOREhMVHyyG+/+vQyn4bc6Lw/3cssr+TZoWjgbK0fBcVpGrqrl+SD1m/IAWYJtA93cfMi7cU3pvMSYkVxQigQazrJBO2Q8MaydJXdgJF/0a6X3ZvKt4dnH/f1nD8R28Pdvt3+4f9waM793bvP4om1bQ9PVUHsLK0GEuO7ztxYQYC7bnvzH223QMj3H94uP/wEEbcPbxdKm9XCJWZ5gjs7f6dt24fprOnwjq6lSW1gStX2muhjfiWYeMVtgxTssG27uKeWDXQVuHapbFbIMAskIsM56mrOnlWPlRt4ogeuwq1WCfreTEdldD82J2r+rH0hJLw9Mh6Qol4uiyKTOt9OcQPU5yMcJ7SfL3ZbN3q7KBzO6QN6xudzX5X0HBvYw8NQgp6xnLIGDa227siEP3uXp2C4O/BEutRt1wUOUqpkZMWiZuppJkJZ7sXzvp7c/CGx+AMY5JEd6McAPgxyHNTtybg1XS76dlJzyUzPs3Ezi8VoqTbNbIT+aPYtHJrk53IzXRauN9ubjbDGDOYh/QwieSJshnmT2iNSBCKcqpLmUwF1p0OSlJmz+EKosJYSRDOtyR6CUO0lV/Pyh5iK1foNYg3+UUFr2HxRfbrUk8jcvXZvgF4Vi+irQDBcHwvAPyvlHcu4hOtns/ncVJYuKSlMeKAlmAkUBOVULrl+tL+zUqlnLKOZk3YIDVpS+stshUTOJtREUO4mZ3eSBZVR3QbBdUR7c6S6ggk5pRDarDKrqtb4xS86RXg5dnhxFpjSH6lR2rIKzYEPm2xL9Vw1DhWKZCxgxy+gZuvDOg66xuJAZcU5Emns1SC6vVGpisl37AY75EPTdRMyAk+b9dJTdmoxWmEVtwDjiajwztRjtM+nUaFrMUwXCPdmhBGMAHNmmDgLgKp12sJDjOmvNEj9a1UwUuEFJAUx7OaHPE6g1ERdUd8QkjrrGG0HQ983MrrlRp0Wk2yar1g0NNo0BC7lXSbanww5FTwgVc5Bl9jegL3kGhH+kuCtBuk2Y1BvAGRaTvsiFbfYVgxELS+Ev4JJzRsesbnD3cuEQsuA2sBjAoQ3oiJz4K33+DTLYcFnhxJ1gEHbFWW7X6GW4VnuFMY1G/2Qrq5eg0gv/rWYzQHAcgss7ObkCE4JJjTy3Fbb1TWmpimXtCx2CitKA/XLtqJLIZ7gxaBLmgSmcHdCMFu5O6mRaTT2oeAvhutjRRX1xrRLmyrW+iqRNNzg3e+Uafb3IsbdOr5vKyF2qgC6IfDBaIW8TxsdgWvgQGTG0vVY7cSr3c+nOrERCeXHXoIqwRpkEVsy1wQGggRHxqODdfD84WqSWj4RVTXhb6xwud0OViqxCW3tqyoVsW0T2nhTqZy1rchbuXR1Uz3PHWiv7rF31paBllQ8MJHr5Ypr0hVqzR3N2ph1rXLg7K4JYgqCxOedTt0rDdbBY51kChg0SwYsBp3DJWRDhG/vShRAJZhfDz7lHa0WBVLqnA1cjEStS5B2Sp6ENLO9M+fqUS7+AM9PxScTiKf/zBWOCOlXMOEIEQVdZ8QCXU4DM7GSZRd5ya5BOWRkUOfPZEnEOAUPhFF7LwMTbZhsun8O7Rw51MnNVHLJJAerRgBJr4Bi4+frwiesy1FZ4STtUB8Ax2/KLiNL6NRkvYNDTnkSfjAtx8FHZXZ8chwZUd18VAE39ajbvLAPk4l4Sg57FBuLxh3nQRTNsDpCuhQLHTvFZi9MT7K0rVvXJtdGw2u3b729rUDCS2mpDi435WiWJ1Fh0SQfjpL4VGReEVV3G9OVC4oCQ+4Us2dfMHYiqeeQKhEiawslY3PP8ADZ3/+bM6l4uTimU0Cxh8dca7nF0gS1cN3y4Xwq6yYlMkbCN+fP7s8f66xUbfCdQKgEoskJ2ubV0EcP1YqQsnzbScL7CpcYubpMYb1sbNQlSUHGb7Y+r198XwhPCYHKxPZ+FMN09IUqf/bhczf04JRwx6MxzNHn5Ra6nSn+//zQp85LUkgJ8GJZ+qD90je4s7tGEbruYs/f8zglHWS3Qp9zwTMozXPXBUEuieOclWAjCB/Pna8Hh660uyRrvUkEIGzRqeF3oJxNhjP0AD3JHcybMTfARU9aTE/aTVqThHrKBmKh6m15NmRvMPiONErotr/bGot7ufltEmnl6SXHz47snYvz38Lg9ElxdOOu5vNbrMrlVEWKu8aUxEvv/XLV9KioiP1N/PP0JdVw6BNfudHWvhxmKbMV8Vi3ZlOb1E8q2Lcsy+rgk2RQrLQV2bgig+Acamie06y8ExXXol/OWHKOXJWQro++u6RldiepMIVbDuUO32WcYSjvUdxkjgtoMm9TGvCxWB/BywL+orHU7DLvJ4HyLOZxDyHphfPFpIgBErsUaZx4FHJ0D5TMJyj3np8wzMqLcPt4Bef+mhqASFrUiV7+wfsDDcWkRO0wBY91R8TXnQpvm9xNC/PfxNWIoWHyN2Lf7HItjVybWOk0CAHLUgvG5PlUYb7paWoim28xqhKlWhRgpDXYMstMrr4E/pF9N8ZfIb/aHGiQr5ug5ika+oTJl/oFDDHPn6AnnOInZAH3nxfIwjtjxpMPeoqZ3rxJwJtnjuluSPYzb1yqrucT5Z7g8zNvCtjbhbV0GcVTsGVLzfz9nFvFl3qsrL8MpebBXvIN5ddviLIHBSpQoi6eYwtX/F0a6TYsifi2Bm4qwTtIFUjPNPP2D0Od5BzQt2l2x1LpIsLRFpGCphHz9PTblc+e5jdnwmBlTqEmHvUZiu3mIEyEC3t45T7CM5eQnZyziHyYXkCDZBFSK/1xIK5VVhTEWwUveIO0VLY0zKwl1ZtCBlAV3RerB7fQcKsGXKjGF7ByqVPhZ1ZFpTqKz4tELiY9qlHk56Gpdkz9IlYgcyqRzDYclXDXzdh+jwNdAzbyVAKRwkKaxLEFTNpzDqFwpGu09laWnGTW9+D/5XuXVgsI+yY3Derd2vV/L2I5B5pGbjTK8AVHz4XyKPiT+ezoaUapixnt6JKHyEX8jBpyARHTOHDUlnIOwCTDbbyjrRENadFQ1HlKTzFHiMjqB6RSsC68mHTfFnM2m34txTjEuENU7uZUCnX/Ih+MtFHPKIuobKEMVGpo6/lc2rFEJLRSRQcgSd7QaMQDMVHNjEvzz9Cn/f8Y3pN1vTiD2rOtGf3jUsq6YR7lTeFmdl/Dd22rZICWE74v5R1dvWjYyU1xzIX9sorYesKwsSFVY75mlXyNdWc6/T3ijCZ8mURQlebUDNJUligyJMsPLz2p2z/iIersT2YLfIEEH0qEOKlrnnunRdBAFOoQ4Ru7Cv6ofmnrlO5j6ufQH/lxV0GnSseX7/6FMWqd5vNYAtHEARBWL26uor340JTDGpcHXCdOYYJC3g1k+oBWTuiHvBRZevIUq6/Kb/ZCxsxznlhg8oqLnTlILgxF3O4c3qGlw+nePOhJbM75PBiNV+bMvmObl+rkkRfVBcgJgzOa2FVUOYOXGnHnvMrc/lNeNSNtV1jYliqSRg9aAWRJGoKmdPLWER3j4vu0MMf6UClaSxydvELjS6032tVWGHPF+zSQOGFiOSQ5oNSs10NsiT7O8zusO2ei2f0ksZPLXIrP9eiQQOHPMYjgd+28JtKvMsX5/E7CsPsU/qqvXwyRPj4ItSXYakEySBA6r9yrlQMd5RsxDlCnCJcWTYPafWh4Z10lk+FFWUk70rNgusKMzewJlUAjDRVvehGquBCKrbWpUrSMhYppLQ+Gqm+ijG0fLSK94EerVaPVvnsHa1Wnkp4QeRbD/r9e/QO0Hwc8y4/lItJK1LqW4U9vwxlvIx4RvNV5KFwliIHOC4xgitYr0R4gb4vUveiZCqd7VtH3/aXTPZfaNauaLOuPFklpoJOmXBS0WpIlatRm/KkKJEog9XAp3oVvmdyepk8cdw5KodvMkhBFJdwN8qS8yRn6kJ27vGgwxvmVD3dPdFT78LUbZIRy8DnedJRs+W3ruUf3IrD+QLUVOgfBeA71vT+/sDTyN7j77iYARxLDx3ctx8R/jcBCMf74R3QXggNvcaV18nB3AFP32Ops7093BlHEQaHBKTNs01wRKzgflWF5t3wjwuQ/cUdC5aeaUKcpToOskM1PRsA4iXfWIePtbZrbFB9dBNrxDyCMQW7kBWoxNtwyc7bu+vBQBxD1SfoSxNacrASej8D/ncRGCcA/AAVryyFDdgfPAhUW/CnApL9C/8CAky0xCszbO/IkoK/YpAAyZw48SiD1N8lCKC959nWER4JTb6Ij0X/dIGl6yMTwaVuU094+/BZktJCzA8+9YDNSCFyo4+cZjaU4zNjl9J8qcATLePJ69RBAnHLsKojkYpGlHGDg3EjfxKKPGl1BJK/AAkxNMIGwwyqbnkGHur1bfI2hfdA13Sgzc0VnPSUMqSqJMbSnKmjWw+00iS84Y49UkGM8y52GBqPGwtmbHU1mf4+wMsskYpEvptPIUg7dMP8tqWQfVjbqF5oS06b6jm65qeK+RlgRGHusdYmbhPrIww5mHbY7NScMzLEc3cAKsyq4+U2iyjJjjBSUKO0O2saPRsWhRzoKBZPJdPyeFaBYsFSyAWnUwTXjPLTD/QusxDQOhmbturjmYjUtaOppHNKnmPHcYLzJHSQCllfJw14agi7Jw4aNVJnSQoBUCXKRYdmW0xbO85J16RwzS2qyl2C+cVU4lRgXhIwji9mh25A5LtSdlGs5KwJGvh/UZ0A3AP8QyPHoXu6P3e+8Pov11vsP0lrJ2Osb5GoMPSexEX86daThIw/3aJXpg6C7MCALeYBXcy9ka6BhvZ0vCR+GRzZPl0zTivrDfhtumbgEQepmu9EppGMCxgAT0jPVZAshlOMZB09o1flPKBhsxJLbz50XFsDJ0jZxzBUDk/9ej5Yu178+539Pn2NRXui97rrxt/v9r927+Hdu1XwisZ46rxXi7mnSa3u0AjYptsKmGF/ItHRMQWQHkdiCAg+FW8mSAzBZL8QRYnjCJ9rT9P5U9tTLLrowUGwYOTssvdVFxZSkp0Hh9sPDh/u37m3d1+QxuddlNHpnqlOPPI32b57g4cH/YPb9x+xOxJyQZweTO3TR0HRSxzKo8HtO7v97C3BcW6/I3E4uAEpvYsQ2POybijI+OsY8Wcdo6F3HvS3D/uDe/cHAuTLSN/164nhKqgEvwTB56oZZjrlo4EBSugIeG6KFUICRNb8XBdZmDiwGP6hZx4LbhKUlIlxuEp3uTdH3ZggqvB4gEMrGJ8kB8UY6H8BDKYcRp5tAAA="
-exec(compile(gzip.decompress(base64.b64decode(_PAYLOAD)), __file__, "exec"), {"__file__": __file__, "__name__": "__main__"})
+path = Path(sys.argv[1] if len(sys.argv) > 1 else "project/desktop/main.py")
+source = path.read_text(encoding="utf-8")
+
+def replace_once(old, new):
+    global source
+    if old not in source:
+        raise SystemExit("Patch target not found: " + old[:100])
+    source = source.replace(old, new, 1)
+
+replace_once(
+    '        self._qr_img = None\n        self._build_styles(); self._build_shell(); self._show_page("Trang chủ")',
+    '        self._qr_img = None\n'
+    '        self.mirror_window = None\n'
+    '        self.mirror_view = None\n'
+    '        self.mirror_phone_screen = None\n'
+    '        self.mirror_placeholder = None\n'
+    '        self.mirror_window_status = None\n'
+    '        self.preview_img = None\n'
+    '        self.wallpaper_photo = None\n'
+    '        self.wallpaper_base = None\n'
+    '        self._shown_frame_seq = -1\n'
+    '        self._latest_frame_bytes = None\n'
+    '        self.record_writer = None\n'
+    '        self.is_recording = False\n'
+    '        self.record_button_ref = None\n'
+    '        self._sidebar_collapsed = False\n'
+    '        self._last_stream_dims = None\n'
+    '        self._build_styles(); self._build_shell(); self._show_page("Trang chủ")',
+)
+replace_once(
+    '        for name,icon in [("Trang chủ","⌂"),("Phòng chiếu","▣"),("Thiết bị","▣"),("Lịch sử","◷"),("Cài đặt","⚙"),("Trợ giúp","?"),("Giới thiệu","ⓘ")]:',
+    '        for name,icon in [("Trang chủ","⌂"),("Thiết bị","▣"),("Lịch sử","◷"),("Cài đặt","⚙"),("Trợ giúp","?"),("Giới thiệu","ⓘ")]:',
+)
+replace_once('        elif name=="Phòng chiếu": self._mirror_page()\n', '')
+replace_once(
+    '        tk.Label(notice,text="✓  Tirror nhận và giải mã luồng video H.264 từ điện thoại qua Wi-Fi tại mục Phòng chiếu.",font=("Segoe UI",9,"bold"),fg="#137A50",bg="#EAF8F1",anchor="w",padx=14,pady=10).pack(fill="x")',
+    '        tk.Label(notice,text="✓  Khi điện thoại bắt đầu chiếu, Tirror tự mở giao diện xem màn hình với khung điện thoại và thanh công cụ.",font=("Segoe UI",9,"bold"),fg="#137A50",bg="#EAF8F1",anchor="w",padx=14,pady=10).pack(fill="x")',
+)
+replace_once(
+    '        ttk.Button(row,text="Mở phòng chiếu",style="Secondary.TButton",command=lambda:self._show_page("Phòng chiếu")).pack(side="right",padx=14)',
+    '        ttk.Button(row,text="Xem màn hình",style="Secondary.TButton",command=self._open_mirror_window).pack(side="right",padx=14)',
+)
+
+viewer_methods = r'''
+    def _make_mirror_wallpaper(self):
+        from PIL import ImageDraw, ImageFilter
+        w, h = 1600, 900
+        img = Image.new("RGB", (w, h), "#0757B7")
+        draw = ImageDraw.Draw(img, "RGBA")
+        for y in range(h):
+            t = y / max(1, h - 1)
+            draw.line((0, y, w, y), fill=(int(8+12*t), int(72+60*t), int(170+60*t)))
+        draw.ellipse((480, -360, 1750, 760), fill=(90, 170, 255, 130))
+        draw.ellipse((-380, 300, 950, 1250), fill=(0, 22, 112, 115))
+        return img.filter(ImageFilter.GaussianBlur(38))
+
+    def _open_mirror_window(self):
+        if self.mirror_window is not None:
+            try:
+                if self.mirror_window.winfo_exists():
+                    self.mirror_window.deiconify(); self.mirror_window.lift(); return
+            except tk.TclError: pass
+        win = tk.Toplevel(self)
+        self.mirror_window = win
+        win.title("Tirror — Phòng chiếu không dây")
+        win.geometry("1280x800"); win.minsize(820, 560)
+        try: win.state("zoomed")
+        except tk.TclError: pass
+        win.configure(bg="#0757B7")
+        try: win.iconbitmap(str(ASSETS / "tirror.ico"))
+        except Exception: pass
+        self.withdraw()
+        self.wallpaper_base = self._make_mirror_wallpaper()
+        self.wallpaper_photo = ImageTk.PhotoImage(self.wallpaper_base.resize((1280, 800), Image.Resampling.LANCZOS))
+        self.mirror_wallpaper_label = tk.Label(win, image=self.wallpaper_photo, bd=0)
+        self.mirror_wallpaper_label.place(x=0, y=0, relwidth=1, relheight=1)
+        tk.Label(win, text="TIRROR  •  WIRELESS DISPLAY", font=("Segoe UI", 10, "bold"),
+                 fg="white", bg="#164B8C", padx=16, pady=9).place(x=22, y=18)
+        self.mirror_window_status = tk.Label(win,
+            text=(f"●  Đang chiếu: {self.mirror.active_device}" if self.mirror.is_casting else "●  Đang chờ điện thoại kết nối"),
+            font=("Segoe UI", 10, "bold"), fg="white", bg="#164B8C", padx=16, pady=9)
+        self.mirror_window_status.place(relx=1, x=-22, y=18, anchor="ne")
+
+        self.mirror_phone_shell = tk.Frame(win, bg="white", bd=0, highlightbackground="#DCE8F9", highlightthickness=3)
+        self.mirror_phone_screen = tk.Frame(self.mirror_phone_shell, bg="#0B1C3C", bd=0)
+        self.mirror_speaker = tk.Frame(self.mirror_phone_shell, bg="#52627A", bd=0)
+        self.mirror_camera = tk.Frame(self.mirror_phone_shell, bg="#8090A8", bd=0)
+        self.mirror_nav = tk.Frame(self.mirror_phone_shell, bg="white", bd=0)
+        for glyph in ("‹", "○", "▢"):
+            tk.Label(self.mirror_nav, text=glyph, font=("Segoe UI", 15), fg="#52627A", bg="white").pack(side="left", expand=True, fill="both")
+
+        self.mirror_placeholder = tk.Frame(self.mirror_phone_screen, bg="#0B1C3C")
+        self.mirror_placeholder.place(relx=0, rely=0, relwidth=1, relheight=1)
+        status = tk.Frame(self.mirror_placeholder, bg="#0D2146", height=26)
+        status.pack(fill="x"); status.pack_propagate(False)
+        tk.Label(status, text="9:41", font=("Segoe UI", 8, "bold"), fg="white", bg="#0D2146").pack(side="left", padx=10)
+        tk.Label(status, text="●  Wi-Fi  ▰", font=("Segoe UI", 8), fg="white", bg="#0D2146").pack(side="right", padx=10)
+        tk.Label(self.mirror_placeholder, text="09:41", font=("Segoe UI", 32, "bold"), fg="white", bg="#0B1C3C").pack(anchor="w", padx=18, pady=(15, 0))
+        tk.Label(self.mirror_placeholder, text="Thứ hai  •  Tirror", font=("Segoe UI", 9), fg="#BCD2F5", bg="#0B1C3C").pack(anchor="w", padx=20, pady=(0, 8))
+        grid = tk.Frame(self.mirror_placeholder, bg="#0B1C3C"); grid.pack(fill="both", expand=True, padx=12, pady=2)
+        apps = [("🌐","Web"),("✉","Mail"),("▦","Ảnh"),("⚙","Cài đặt"),("▶","Video"),("♫","Nhạc"),("☏","Gọi"),("◉","Camera")]
+        for i, (glyph, label) in enumerate(apps):
+            cell = tk.Frame(grid, bg="#0B1C3C"); cell.grid(row=i//4, column=i%4, sticky="nsew", padx=2, pady=3)
+            tk.Label(cell, text=glyph, font=("Segoe UI Emoji", 17), fg="white", bg="#244A7E", width=2).pack()
+            tk.Label(cell, text=label, font=("Segoe UI", 7), fg="#E6F0FF", bg="#0B1C3C").pack()
+        for col in range(4): grid.grid_columnconfigure(col, weight=1)
+        dock = tk.Frame(self.mirror_placeholder, bg="#243E66"); dock.pack(fill="x", padx=10, pady=(2, 10))
+        for glyph in ("☏", "✉", "🌐", "◉", "▦"):
+            tk.Label(dock, text=glyph, font=("Segoe UI Emoji", 15), fg="white", bg="#243E66", width=3, pady=5).pack(side="left", expand=True)
+        self.mirror_view = tk.Label(self.mirror_phone_screen, bg="#05080F", bd=0, highlightthickness=0)
+        self.mirror_view.place_forget()
+
+        self.mirror_sidebar = tk.Frame(win, bg="white", highlightbackground="#D9E4F3", highlightthickness=1)
+        self.mirror_sidebar_tab = tk.Button(self.mirror_sidebar, text="‹", font=("Segoe UI", 10, "bold"),
+            fg="#45617F", bg="#EDF4FF", activebackground="#DDEAFF", bd=0, relief="flat",
+            command=self._toggle_mirror_sidebar, cursor="hand2")
+        self.mirror_sidebar_tab.pack(fill="x", padx=7, pady=(8, 7), ipady=4)
+        self.mirror_sidebar_buttons = []
+        self._add_mirror_tool("●", "Tài khoản", self._mirror_account_info, True)
+        self._add_mirror_tool("▣", "Chụp ảnh", self._capture_mirror_screenshot)
+        self._add_mirror_tool("◉", "Quay video", self._toggle_mirror_recording)
+        self._add_mirror_tool("⌨", "Điều khiển PC", self._mirror_pc_control, alert=True)
+        self._add_mirror_tool("⚙", "Cài đặt", self._mirror_open_settings)
+        self._add_mirror_tool("?", "Trợ giúp", self._mirror_open_help)
+        self._last_stream_dims = (self.mirror.output_width, self.mirror.output_height)
+        self._shown_frame_seq = -1; self.preview_img = None
+        win.bind("<Configure>", self._mirror_resize)
+        win.protocol("WM_DELETE_WINDOW", self._close_mirror_window)
+        self._layout_mirror_window()
+
+    def _add_mirror_tool(self, glyph, label, command, active=False, alert=False):
+        wrap = tk.Frame(self.mirror_sidebar, bg="white"); wrap.pack(fill="x", padx=6, pady=4)
+        button = tk.Button(wrap, text=f"{glyph}\n{label}", font=("Segoe UI", 8, "bold"),
+            fg=("white" if active else "#334B6C"), bg=("#1769E8" if active else "#F7FAFF"),
+            activebackground=("#0D55D8" if active else "#E8F1FF"), relief="flat", bd=0,
+            cursor="hand2", command=command, justify="center", height=3, wraplength=84)
+        button.pack(fill="x", ipady=2)
+        if alert: tk.Label(wrap, text="●", font=("Segoe UI", 9), fg="#E53935", bg="#F7FAFF").place(relx=.9, rely=.05, anchor="center")
+        self.mirror_sidebar_buttons.append((button, label, glyph))
+        if label == "Quay video": self.record_button_ref = button
+
+    def _toggle_mirror_sidebar(self):
+        self._sidebar_collapsed = not self._sidebar_collapsed
+        self.mirror_sidebar_tab.configure(text=("›" if self._sidebar_collapsed else "‹"))
+        for button, label, glyph in self.mirror_sidebar_buttons:
+            button.configure(text=(glyph if self._sidebar_collapsed else f"{glyph}\n{label}"), height=(1 if self._sidebar_collapsed else 3))
+        self._layout_mirror_window()
+
+    def _mirror_resize(self, event=None):
+        if event is not None and event.widget is not self.mirror_window: return
+        if self.mirror_window is not None: self.mirror_window.after(100, self._layout_mirror_window)
+
+    def _layout_mirror_window(self):
+        win = self.mirror_window
+        if win is None or not win.winfo_exists(): return
+        width, height = max(820, win.winfo_width()), max(560, win.winfo_height())
+        ow, oh = max(2, self.mirror.output_width), max(2, self.mirror.output_height)
+        ratio = ow / oh
+        side_w = 66 if self._sidebar_collapsed else 112
+        max_w, max_h = max(240, int(width*.60)-side_w-65), max(280, int(height*.78)-105)
+        if ratio >= 1:
+            sw = min(max_w, max_h*ratio); sh = sw/ratio
+        else:
+            sh = min(max_h, max_w/ratio); sw = sh*ratio
+        sw, sh = int(sw), int(sh)
+        shell_w, shell_h = sw+38, sh+105
+        x = max(14, int((width-shell_w-side_w-12)/2))
+        y = max(65, int((height-shell_h)/2)+12)
+        self.mirror_phone_shell.place(x=x, y=y, width=shell_w, height=shell_h)
+        self.mirror_phone_screen.place(x=17, y=42, width=sw, height=sh)
+        self.mirror_speaker.place(x=max(3, shell_w//2-28), y=17, width=42, height=5)
+        self.mirror_camera.place(x=max(3, shell_w//2+25), y=15, width=7, height=7)
+        self.mirror_nav.place(x=9, y=sh+47, width=shell_w-18, height=48)
+        side_h = min(555, max(390, int(height*.72)))
+        self.mirror_sidebar.place(x=x+shell_w+12, y=y+(shell_h-side_h)//2, width=side_w, height=side_h)
+
+    def _mirror_toast(self, message):
+        if self.mirror_window is None: return
+        try:
+            label = tk.Label(self.mirror_window, text=message, font=("Segoe UI", 10, "bold"),
+                             fg="white", bg="#163D70", padx=18, pady=10)
+            label.place(relx=.5, rely=.94, anchor="center")
+            self.mirror_window.after(2600, label.destroy)
+        except tk.TclError: pass
+
+    def _mirror_account_info(self):
+        self._mirror_toast("Tirror • " + (self.mirror.active_device or "Chưa có thiết bị đang chiếu"))
+
+    def _capture_mirror_screenshot(self):
+        if not self._latest_frame_bytes:
+            self._mirror_toast("Chưa có hình ảnh để chụp"); return
+        try:
+            from datetime import datetime
+            from pathlib import Path
+            folder = Path.home() / "Pictures" / "Tirror"; folder.mkdir(parents=True, exist_ok=True)
+            image = Image.frombytes("RGB", (self.mirror.output_width, self.mirror.output_height), self._latest_frame_bytes)
+            image.save(folder / ("Tirror_" + datetime.now().strftime("%Y%m%d_%H%M%S") + ".png"))
+            self._mirror_toast("Đã lưu ảnh trong Pictures\\Tirror")
+        except Exception as exc: self._mirror_toast("Không chụp được ảnh: " + str(exc))
+
+    def _toggle_mirror_recording(self):
+        if self.is_recording:
+            self._stop_mirror_recording(); self._mirror_toast("Đã lưu video quay màn hình"); return
+        if not self._latest_frame_bytes:
+            self._mirror_toast("Hãy bắt đầu chiếu trước khi quay"); return
+        try:
+            from datetime import datetime
+            from pathlib import Path
+            import imageio_ffmpeg
+            folder = Path.home() / "Videos" / "Tirror"; folder.mkdir(parents=True, exist_ok=True)
+            target = folder / ("Tirror_" + datetime.now().strftime("%Y%m%d_%H%M%S") + ".mp4")
+            self.record_writer = imageio_ffmpeg.write_frames(str(target), (self.mirror.output_width, self.mirror.output_height),
+                fps=30, codec="libx264", pix_fmt_in="rgb24", pix_fmt_out="yuv420p")
+            self.record_writer.send(None); self.is_recording = True
+            if self.record_button_ref: self.record_button_ref.configure(text="■\nDừng quay", fg="#D93838")
+            self._mirror_toast("Đang quay màn hình…")
+        except Exception as exc:
+            self.record_writer = None; self.is_recording = False; self._mirror_toast("Không bật được quay: " + str(exc))
+
+    def _stop_mirror_recording(self):
+        writer, self.record_writer = self.record_writer, None; self.is_recording = False
+        if writer is not None:
+            try: writer.close()
+            except Exception: pass
+        if self.record_button_ref is not None:
+            try: self.record_button_ref.configure(text="◉\nQuay video", fg="#334B6C")
+            except tk.TclError: pass
+
+    def _mirror_pc_control(self):
+        self._mirror_toast("Điều khiển ngược từ PC chưa có trong bản này")
+
+    def _mirror_open_settings(self):
+        messagebox.showinfo("Cài đặt Tirror", "Chất lượng, FPS và tối ưu nhiệt được chọn trong ứng dụng Android.", parent=self.mirror_window)
+
+    def _mirror_open_help(self):
+        messagebox.showinfo("Trợ giúp Tirror", "Điện thoại và PC cần cùng Wi-Fi. Xoay điện thoại trước khi bắt đầu chiếu để khung tự chuyển dọc/ngang.", parent=self.mirror_window)
+
+    def _close_mirror_window(self):
+        win = self.mirror_window; self._stop_mirror_recording()
+        self.mirror_window = None; self.mirror_view = None; self.mirror_window_status = None
+        self.preview_img = None; self.wallpaper_photo = None; self.wallpaper_base = None
+        self._shown_frame_seq = -1; self._latest_frame_bytes = None
+        if win is not None:
+            try: win.destroy()
+            except tk.TclError: pass
+        try: self.deiconify(); self.lift()
+        except tk.TclError: pass
+
+    def _render_mirror_frame(self):
+        if not self.winfo_exists(): return
+        win, view = self.mirror_window, self.mirror_view
+        if win is not None and view is not None:
+            try:
+                if self.mirror.is_casting:
+                    frame, seq = self.mirror.get_latest_frame()
+                    if frame and seq != self._shown_frame_seq:
+                        ow, oh = self.mirror.output_width, self.mirror.output_height
+                        dims = (ow, oh)
+                        if dims != self._last_stream_dims:
+                            self._last_stream_dims = dims; self._layout_mirror_window()
+                        self._latest_frame_bytes = frame
+                        image = Image.frombytes("RGB", (ow, oh), frame)
+                        image.thumbnail((max(160, self.mirror_phone_screen.winfo_width()),
+                                         max(200, self.mirror_phone_screen.winfo_height())), Image.Resampling.LANCZOS)
+                        self.preview_img = ImageTk.PhotoImage(image)
+                        self.mirror_placeholder.place_forget()
+                        view.configure(image=self.preview_img, text="")
+                        view.place(x=0, y=0, relwidth=1, relheight=1)
+                        self._shown_frame_seq = seq
+                        if self.is_recording and self.record_writer is not None:
+                            try: self.record_writer.send(frame)
+                            except Exception: self._stop_mirror_recording()
+                elif self._shown_frame_seq != -1:
+                    self._latest_frame_bytes = None; view.place_forget()
+                    self.mirror_placeholder.place(relx=0, rely=0, relwidth=1, relheight=1)
+                    self.preview_img = None; self._shown_frame_seq = -1
+                    if self.is_recording: self._stop_mirror_recording()
+                if self.mirror_window_status is not None:
+                    self.mirror_window_status.configure(text=(f"●  Đang chiếu: {self.mirror.active_device}" if self.mirror.is_casting else "●  Đang chờ điện thoại kết nối"))
+            except (tk.TclError, ValueError) as exc:
+                try: view.configure(image="", text=f"Lỗi hiển thị hình ảnh: {exc}")
+                except tk.TclError: pass
+        self.after(33, self._render_mirror_frame)
+'''
+
+pattern = re.compile(r'    def _mirror_page\(self\):\n.*?(?=    def _devices\(self\):)', re.S)
+source, count = pattern.subn(lambda _m: viewer_methods, source, count=1)
+if count != 1:
+    raise SystemExit("Could not replace original mirror page")
+
+replace_once(
+    '            "Sau khi xác thực, hãy mở mục Phòng chiếu. Trên điện thoại, chọn PC đã lưu và nhấn Bắt đầu chiếu để cấp quyền chia sẻ màn hình Android."',
+    '            "Sau khi xác thực, chọn PC đã lưu trên điện thoại và nhấn Bắt đầu chiếu. Tirror sẽ tự mở giao diện chiếu toàn màn hình."',
+)
+replace_once(
+    '                    if self.current_page != "Phòng chiếu": self._show_page("Phòng chiếu")\n'
+    '                    elif hasattr(self,"mirror_status"): self.mirror_status.configure(text=f"● Đang chiếu: {data.get(\'name\',\'Android\')}",fg=GREEN)\n',
+    '                    self._open_mirror_window()\n'
+    '                    if self.mirror_window_status: self.mirror_window_status.configure(text=f"●  Đang chiếu: {data.get(\'name\',\'Android\')}")\n',
+)
+replace_once(
+    '                    if hasattr(self,"mirror_status") and self.current_page=="Phòng chiếu":\n'
+    '                        self.mirror_status.configure(text="● Đang chờ điện thoại bắt đầu chiếu",fg=BLUE)\n',
+    '                    if self.mirror_window_status: self.mirror_window_status.configure(text="●  Đang chờ điện thoại kết nối")\n',
+)
+replace_once(
+    '                    if self.current_page=="Phòng chiếu" and hasattr(self,"mirror_view"):\n'
+    '                        self.mirror_view.configure(text=data,image="")\n',
+    '                    if self.mirror_window is not None: self._mirror_toast(data)\n',
+)
+replace_once(
+    '    def _close(self):\n        self.mirror.stop(); self.server.stop(); self.destroy()\n',
+    '    def _close(self):\n        self._stop_mirror_recording()\n        if self.mirror_window is not None: self._close_mirror_window()\n        self.mirror.stop(); self.server.stop(); self.destroy()\n',
+)
+path.write_text(source, encoding="utf-8")
+print("Patched Tirror desktop viewer:", path)
+
+# Make the video decode output follow the incoming screen orientation and hide
+# the child FFmpeg process console on Windows.
+mirror_path = path.with_name("mirroring.py")
+mirror = mirror_path.read_text(encoding="utf-8")
+if "import os\n" not in mirror:
+    mirror = mirror.replace("import json\n", "import json\nimport os\n", 1)
+needle = '        self._active_device = ""\n        self._active = threading.Event()\n'
+if needle not in mirror: raise SystemExit("Missing MirrorReceiver init marker")
+mirror = mirror.replace(needle, needle + '        self.output_width = OUTPUT_WIDTH\n        self.output_height = OUTPUT_HEIGHT\n', 1)
+needle = '            ffmpeg = self._ffmpeg_path()\n            command = [\n'
+if needle not in mirror: raise SystemExit("Missing FFmpeg command marker")
+setup = '''            max_edge = max(OUTPUT_WIDTH, OUTPUT_HEIGHT)
+            scale = min(1.0, max_edge / float(max(width, height)))
+            output_width = max(2, int(width * scale) // 2 * 2)
+            output_height = max(2, int(height * scale) // 2 * 2)
+            with self._frame_lock:
+                self.output_width, self.output_height = output_width, output_height
+                self._latest_frame = None
+                self._frame_seq += 1
+            ffmpeg = self._ffmpeg_path()
+            command = [
+'''
+mirror = mirror.replace(needle, setup, 1)
+mirror = mirror.replace(
+    '                "-vf", f"scale={OUTPUT_WIDTH}:{OUTPUT_HEIGHT}:force_original_aspect_ratio=decrease,pad={OUTPUT_WIDTH}:{OUTPUT_HEIGHT}:(ow-iw)/2:(oh-ih)/2",\n',
+    '                "-vf", f"scale={output_width}:{output_height}:force_original_aspect_ratio=decrease,pad={output_width}:{output_height}:(ow-iw)/2:(oh-ih)/2",\n',
+    1,
+)
+mirror = mirror.replace(
+    '            decoder = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0)\n',
+    '''            popen_options = {"stdin": subprocess.PIPE, "stdout": subprocess.PIPE, "stderr": subprocess.DEVNULL, "bufsize": 0}
+            if os.name == "nt":
+                startup = subprocess.STARTUPINFO()
+                startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                startup.wShowWindow = subprocess.SW_HIDE
+                popen_options["startupinfo"] = startup
+                popen_options["creationflags"] = subprocess.CREATE_NO_WINDOW
+            decoder = subprocess.Popen(command, **popen_options)
+''',
+    1,
+)
+mirror = mirror.replace('            frame_size = OUTPUT_WIDTH * OUTPUT_HEIGHT * 3\n', '            frame_size = self.output_width * self.output_height * 3\n', 1)
+mirror_path.write_text(mirror, encoding="utf-8")
+print("Patched orientation scaling and hidden FFmpeg console:", mirror_path)
