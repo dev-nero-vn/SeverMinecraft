@@ -19,6 +19,12 @@ jobs:
           cat source-parts/*.b64 | base64 -d > Tirror-Source.tar.xz
           mkdir project
           tar -xJf Tirror-Source.tar.xz -C project
+      - name: Export desktop source for UI rebuild
+        uses: actions/upload-artifact@v4
+        with:
+          name: Tirror-Desktop-Source
+          path: project/desktop
+          if-no-files-found: error
       - name: Export Android UI source for scroll fix
         uses: actions/upload-artifact@v4
         with:
