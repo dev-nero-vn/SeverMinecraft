@@ -21,7 +21,7 @@ Mỗi lần push lên nhánh `main`, GitHub Actions sẽ:
 3. Build APK Android và cài/mở trên Android emulator.
 4. Đóng gói EXE + APK vào artifact `Tirror-APK-EXE-ZIP`.
 
-APK CI là debug-signed để thử nghiệm. Không dùng cho phát hành thương mại. Kiểm thử trên emulator không thay thế việc thử ghép nối với điện thoại Android thật và PC Windows thật trên cùng Wi‑Fi.
+APK CI là debug-signed để thử nghiệm. EXE Windows có thông tin nhà phát triển LEHAITRIEU trong thuộc tính file. Chữ ký số Authenticode chỉ được gắn khi cấu hình chứng thư Code Signing đáng tin cậy trong GitHub Actions; không dùng chứng thư tự ký cho phát hành công khai. Kiểm thử trên emulator không thay thế việc thử ghép nối với điện thoại Android thật và PC Windows thật trên cùng Wi‑Fi.
 
 ## Cách sử dụng
 
