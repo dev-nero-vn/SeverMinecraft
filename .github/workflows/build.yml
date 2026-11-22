@@ -19,12 +19,8 @@ jobs:
           cat source-parts/*.b64 | base64 -d > Tirror-Source.tar.xz
           mkdir project
           tar -xJf Tirror-Source.tar.xz -C project
-      - name: Export desktop source for window update
-        uses: actions/upload-artifact@v4
-        with:
-          name: Tirror-Desktop-Source
-          path: project/desktop
-          if-no-files-found: error
+      - name: Switch to separate desktop casting window
+        run: python ci/patch_desktop_window.py project/desktop/main.py
       - name: Install FFmpeg for H.264 integration test
         run: |
           sudo apt-get update
@@ -54,6 +50,7 @@ jobs:
           [IO.File]::WriteAllBytes("Tirror-Source.tar.xz", [Convert]::FromBase64String($encoded))
           New-Item -ItemType Directory -Force project | Out-Null
           tar -xJf Tirror-Source.tar.xz -C project
+          python ci/patch_desktop_window.py project/desktop/main.py
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
