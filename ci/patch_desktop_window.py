@@ -41,7 +41,7 @@ replace_once(
     '        ttk.Button(row,text="Xem màn hình",style="Secondary.TButton",command=self._open_mirror_window).pack(side="right",padx=14)',
 )
 
-viewer_methods = '''    def _open_mirror_window(self):
+viewer_methods = r'''    def _open_mirror_window(self):
         if self.mirror_window is not None:
             try:
                 if self.mirror_window.winfo_exists():
