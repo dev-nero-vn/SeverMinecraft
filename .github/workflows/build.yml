@@ -1,0 +1,160 @@
+name: Build Tirror Apps
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct source archive
+        run: |
+          cat source-parts/*.b64 | base64 -d > Tirror-Source.tar.xz
+          mkdir project
+          tar -xJf Tirror-Source.tar.xz -C project
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test dependencies
+        run: python -m pip install -r project/desktop/requirements.txt pytest
+      - name: Check desktop syntax
+        run: python -m compileall -q project/desktop project/tests
+      - name: Run pairing and H.264 receiver tests
+        working-directory: project
+        run: python -m pytest -q
+
+  windows:
+    needs: test
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct source archive
+        shell: pwsh
+        run: |
+          $parts = Get-ChildItem "source-parts/*.b64" | Sort-Object Name
+          $encoded = ($parts | ForEach-Object { Get-Content $_.FullName -Raw }) -join ""
+          [IO.File]::WriteAllBytes("Tirror-Source.tar.xz", [Convert]::FromBase64String($encoded))
+          New-Item -ItemType Directory -Force project | Out-Null
+          tar -xJf Tirror-Source.tar.xz -C project
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install desktop dependencies
+        run: python -m pip install -r project/desktop/requirements.txt pyinstaller
+      - name: Generate app icon assets
+        working-directory: project
+        run: python assets/generate_assets.py
+      - name: Build Windows executable
+        shell: pwsh
+        working-directory: project
+        run: |
+          pyinstaller --noconfirm --clean --onefile --windowed `
+            --name Tirror `
+            --icon assets/tirror.ico `
+            --add-data "assets;assets" `
+            --collect-all imageio_ffmpeg `
+            desktop/main.py
+      - name: Smoke-test Windows executable startup
+        shell: pwsh
+        working-directory: project
+        run: |
+          $process = Start-Process -FilePath ".\dist\Tirror.exe" -PassThru
+          Start-Sleep -Seconds 10
+          if ($process.HasExited) {
+            throw "Tirror.exe exited during startup smoke test (exit code $($process.ExitCode))."
+          }
+          Stop-Process -Id $process.Id -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Tirror-Windows
+          path: project/dist/Tirror.exe
+          if-no-files-found: error
+
+  android:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct source archive
+        run: |
+          cat source-parts/*.b64 | base64 -d > Tirror-Source.tar.xz
+          mkdir project
+          tar -xJf Tirror-Source.tar.xz -C project
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Build Android APK
+        run: gradle -p project/mobile :app:assembleDebug --no-daemon
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          script: |
+            adb install -r project/mobile/app/build/outputs/apk/debug/app-debug.apk
+            adb shell am start -n com.tirror.app/.MainActivity
+            sleep 5
+            adb shell dumpsys activity activities | grep -q "com.tirror.app/.MainActivity"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Tirror-Android
+          path: project/mobile/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+  package:
+    needs: [windows, android]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Tirror-Windows
+          path: package/windows
+      - uses: actions/download-artifact@v4
+        with:
+          name: Tirror-Android
+          path: package/android
+      - name: Create ZIP containing EXE and APK
+        run: |
+          mkdir -p release
+          cp package/windows/Tirror.exe release/
+          cp package/android/app-debug.apk release/Tirror-Android-debug.apk
+          cat > release/README.txt <<'EOF'
+          Tirror - Wireless Android Screen Mirroring
+
+          Windows: Tirror.exe
+          Android: Tirror-Android-debug.apk
+
+          Open both apps on the same Wi-Fi network. Pair from Android using the
+          six-digit code or QR displayed by Windows. Approve the device on Windows.
+          On Android choose the saved PC, tap Start casting and approve Android's
+          screen-capture permission. Allow Tirror through Windows Firewall on Private
+          networks. No USB connection is used.
+
+          APK is a debug-signed test build. Windows smoke test verifies app startup
+          and Android emulator test verifies install and launch. The final physical
+          phone-to-PC Wi-Fi path still requires a real-device test.
+          EOF
+          cd release
+          zip -9 Tirror-Apps.zip Tirror.exe Tirror-Android-debug.apk README.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Tirror-APK-EXE-ZIP
+          path: release/Tirror-Apps.zip
+          if-no-files-found: error

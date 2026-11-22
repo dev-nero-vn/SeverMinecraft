@@ -1,30 +1,49 @@
-# NEXORA Game Space
+# Tirror
 
-**NEXORA** là ứng dụng Android Gaming Hub theo định hướng Landscape, phong cách Extreme Gaming / Cyber Future, nhận diện tím neon + cyan.
+**Tirror** là bộ ứng dụng Windows + Android để chiếu màn hình Android lên PC qua Wi‑Fi nội bộ.
 
-> Trạng thái hiện tại: nền tảng ban đầu. Đã có splash animation, quét và mở game Android được hệ thống phân loại. Các mô-đun Game Turbo nâng cao chưa được tuyên bố là hoàn thành.
+## Tính năng
 
-## Định hướng
-- Ứng dụng Android độc lập, ưu tiên xử lý trên thiết bị.
-- Bố cục ngang (Landscape).
-- Splash animation neon và tùy chọn bật/tắt hiệu ứng.
-- Thư viện game quét ứng dụng Android có danh mục GAME và mở bằng launcher intent.
-- Không giả lập số liệu hiệu năng, không vượt qua bảo vệ nhiệt hoặc quyền Android.
+- PC hiển thị mã ghép nối sáu chữ số có thời hạn và QR.
+- Android nhập mã hoặc quét QR; PC phải xác nhận yêu cầu ghép nối.
+- Thiết bị đã tin cậy được lưu để chọn và kết nối lại.
+- Android dùng quyền MediaProjection của hệ thống, mã hóa H.264 bằng MediaCodec và truyền video qua TCP nội bộ.
+- Windows xác thực thiết bị bằng HMAC, nhận H.264 và giải mã bằng FFmpeg trong cửa sổ Phòng chiếu.
+- Giao diện Windows: Trang chủ, Phòng chiếu, Thiết bị, Lịch sử, Cài đặt, Trợ giúp, Giới thiệu.
+- Giao diện Android tối ưu cảm ứng: Trang chủ/nhập mã/quét QR, Thiết bị, Lịch sử, Cài đặt, Trợ giúp, Giới thiệu và màn hình Đang chiếu.
+- Không hỗ trợ USB. Kết nối chỉ qua Wi‑Fi.
 
-## Build
-Yêu cầu JDK 17, Gradle 8.13 và Android SDK 36.
+## Build tự động
 
+Mỗi lần push lên nhánh `main`, GitHub Actions sẽ:
+1. Chạy kiểm thử ghép nối và bộ nhận H.264.
+2. Build Tirror.exe trên Windows runner và smoke-test lúc khởi động.
+3. Build APK Android và cài/mở trên Android emulator.
+4. Đóng gói EXE + APK vào artifact `Tirror-APK-EXE-ZIP`.
+
+APK CI là debug-signed để thử nghiệm. Không dùng cho phát hành thương mại. Kiểm thử trên emulator không thay thế việc thử ghép nối với điện thoại Android thật và PC Windows thật trên cùng Wi‑Fi.
+
+## Cách sử dụng
+
+1. Mở Tirror trên PC và cho phép ứng dụng trên Windows Firewall ở mạng Private.
+2. Mở Tirror trên Android cùng mạng Wi‑Fi.
+3. Nhập mã hiển thị trên PC hoặc quét QR.
+4. Chấp thuận yêu cầu ghép nối trên PC.
+5. Chọn PC đã lưu, nhấn Chiếu lại/Bắt đầu chiếu và cấp quyền chia sẻ màn hình Android.
+6. Giữ Tirror PC mở tại Phòng chiếu.
+
+## Giới hạn hiện tại
+
+- Chiếu video Android → Windows, chưa có điều khiển ngược chuột/bàn phím từ PC.
+- Chưa chuyển tiếp âm thanh.
+- MediaProjection bắt buộc Android xác nhận quyền chia sẻ màn hình trước phiên chiếu.
+- Hiệu năng thực tế phụ thuộc bộ mã hóa phần cứng Android, độ ổn định Wi‑Fi và khả năng giải mã PC.
+
+## Kiểm tra cục bộ
+
+Từ thư mục source:
 ```bash
-gradle --no-daemon :app:assembleDebug
+python -m pip install -r desktop/requirements.txt pytest
+python -m compileall -q desktop tests
+python -m pytest -q
 ```
-
-APK: `app/build/outputs/apk/debug/app-debug.apk`
-
-GitHub Actions tạo `NEXORA.apk` và `NEXORA-Android.zip` (ZIP có APK bên trong) khi push lên `main` hoặc chạy thủ công workflow **NEXORA Android Build**.
-
-Đây là bản debug để kiểm thử, chưa phải bản release đã ký. Bản phát hành cần keystore riêng, kiểm thử thiết bị thật và quy trình ký an toàn.
-
-## Các mô-đun còn trong lộ trình
-Floating Game Assistant, Game Profiles, FPS/performance monitor, screen capture, audio/network center, analytics và OEM compatibility. Những tính năng phụ thuộc Android/OEM/phần cứng chỉ được bật khi có hỗ trợ thực tế.
-
-Thiết bị kiểm thử đầu tiên: Samsung Galaxy A07.
