@@ -68,6 +68,8 @@ jobs:
       - name: Generate app icon assets
         working-directory: project
         run: python assets/generate_assets.py
+      - name: Generate LEHAITRIEU Windows version metadata
+        run: python ci/generate_windows_version.py
       - name: Build Windows executable
         shell: pwsh
         working-directory: project
@@ -75,9 +77,16 @@ jobs:
           pyinstaller --noconfirm --clean --onefile --windowed `
             --name Tirror `
             --icon assets/tirror.ico `
+            --version-file version_info.txt `
             --add-data "assets;assets" `
             --collect-all imageio_ffmpeg `
             desktop/main.py
+      - name: Authenticode-sign Tirror when trusted certificate is configured
+        shell: pwsh
+        env:
+          WINDOWS_SIGNING_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_BASE64 }}
+          WINDOWS_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_PASSWORD }}
+        run: ./ci/sign_windows_exe.ps1 -Target "project/dist/Tirror.exe"
       - name: Smoke-test Windows executable startup
         shell: pwsh
         working-directory: project
