@@ -8,8 +8,8 @@
 - Android nhập mã hoặc quét QR; PC phải xác nhận yêu cầu ghép nối.
 - Thiết bị đã tin cậy được lưu để chọn và kết nối lại.
 - Android dùng quyền MediaProjection của hệ thống, mã hóa H.264 bằng MediaCodec và truyền video qua TCP nội bộ.
-- Windows xác thực thiết bị bằng HMAC, nhận H.264 và giải mã bằng FFmpeg trong cửa sổ Phòng chiếu.
-- Giao diện Windows: Trang chủ, Phòng chiếu, Thiết bị, Lịch sử, Cài đặt, Trợ giúp, Giới thiệu.
+- Windows xác thực thiết bị bằng HMAC, nhận H.264 và giải mã bằng FFmpeg trong một cửa sổ xem màn hình riêng, có thể phóng to hoặc thu nhỏ.
+- Giao diện Windows: Trang chủ, Thiết bị, Lịch sử, Cài đặt, Trợ giúp, Giới thiệu. Cửa sổ xem màn hình Android tự bật riêng khi bắt đầu chiếu.
 - Giao diện Android tối ưu cảm ứng: Trang chủ/nhập mã/quét QR, Thiết bị, Lịch sử, Cài đặt, Trợ giúp, Giới thiệu và màn hình Đang chiếu.
 - Không hỗ trợ USB. Kết nối chỉ qua Wi‑Fi.
 
@@ -30,7 +30,7 @@ APK CI là debug-signed để thử nghiệm. Không dùng cho phát hành thư�
 3. Nhập mã hiển thị trên PC hoặc quét QR.
 4. Chấp thuận yêu cầu ghép nối trên PC.
 5. Chọn PC đã lưu, nhấn Chiếu lại/Bắt đầu chiếu và cấp quyền chia sẻ màn hình Android.
-6. Giữ Tirror PC mở tại Phòng chiếu.
+6. Cửa sổ xem màn hình sẽ tự bật riêng trên Windows; có thể đóng cửa sổ xem mà không ngắt phiên chiếu.
 
 ## Giới hạn hiện tại
 
